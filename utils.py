@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import math
 import numpy as np
 import pygame
+import heapq
 
 # @dataclass
 # class SceneObject:
@@ -30,6 +31,8 @@ GREEN = (  0, 255,   0)
 RED =   (255,   0,   0)
 
 SCALE = 10
+
+TURNING_CIRCLE = 30
 
 class __SteeringConverter:
     """
@@ -71,47 +74,116 @@ class __SteeringConverter:
         gap_x = contact_offset - math.cos(left_angle)*contact_offset
         gap_y = front_back_gap + math.sin(left_angle)*contact_offset
         gap = math.sqrt(gap_x**2 + gap_y**2)
-        print(gap_x, gap_y)
-        return gap
+        return gap_x, gap_y
 
 class PositionVector:
     pos = np.zeros(4)
     vel = np.zeros(3)
     acc = np.zeros(3)
 
-# class Renderer:
-size = [800, 600]
-screen = pygame.display.set_mode(size)
+# # class Renderer:
+# size = [800, 600]
+# screen = pygame.display.set_mode(size)
 
-#Loop until the user clicks the close button.
-done = False
-clock = pygame.time.Clock()
+# #Loop until the user clicks the close button.
+# done = False
+# clock = pygame.time.Clock()
 
-screen.fill(WHITE)
+# screen.fill(WHITE)
 
-pos_vec = np.asarray([0, 0, 0, 0])
-pygame.draw.rect(screen, (0, 100, 255), (50, 50, WIDTH, LENGTH), 3)
+# pos_vec = np.asarray([0, 0, 0, 0])
+# pygame.draw.rect(screen, (0, 100, 255), (50, 50, WIDTH, LENGTH), 3)
 
-while not done:
+# while not done:
     
-    # This limits the while loop to a max of 10 times per second.
-    # Leave this out and we will use all CPU we can.
-    # clock.tick(10)
+#     # This limits the while loop to a max of 10 times per second.
+#     # Leave this out and we will use all CPU we can.
+#     # clock.tick(10)
      
-    for event in pygame.event.get(): # User did something
-        if event.type == pygame.QUIT: # If user clicked close
-            done=True # Flag that we are done so we exit this loop
+#     for event in pygame.event.get(): # User did something
+#         if event.type == pygame.QUIT: # If user clicked close
+#             done=True # Flag that we are done so we exit this loop
 
-    # Go ahead and update the screen with what we've drawn.
-    # This MUST happen after all the other drawing commands.
-    pygame.display.flip()
+#     # Go ahead and update the screen with what we've drawn.
+#     # This MUST happen after all the other drawing commands.
+#     pygame.display.flip()
  
-# Be IDLE friendly
-pygame.quit()
+# # Be IDLE friendly
+# pygame.quit()
 
 right_angle = 30
 left_angle = math.degrees(__SteeringConverter.rightToLeft(LINK_LENGTH, LINK_ANGLE, LINK_GAP, math.radians(right_angle)))
-print(round(left_angle, 3))
-print(__SteeringConverter.frontContactGap(math.radians(left_angle), math.radians(right_angle), PIVOT_GAP, PIVOT_OFFSET))
-print(__SteeringConverter.frontRightToBackRightGap(math.radians(right_angle), PIVOT_OFFSET, FRONT_BACK_GAP))
-print(__SteeringConverter.frontLeftToBackLeftGap(math.radians(left_angle), PIVOT_OFFSET, FRONT_BACK_GAP))
+# print(round(left_angle, 3))
+# print(__SteeringConverter.frontContactGap(math.radians(left_angle), math.radians(right_angle), PIVOT_GAP, PIVOT_OFFSET))
+# print(__SteeringConverter.frontRightToBackRightGap(math.radians(right_angle), PIVOT_OFFSET, FRONT_BACK_GAP))
+
+
+for i in range (1, 91):
+    right_angle = i
+    left_angle = math.degrees(__SteeringConverter.rightToLeft(LINK_LENGTH, LINK_ANGLE, LINK_GAP, math.radians(right_angle)))
+    val = __SteeringConverter.frontLeftToBackLeftGap(math.radians(left_angle), PIVOT_OFFSET, FRONT_BACK_GAP)
+    print(i, math.sin(math.radians(90 - left_angle))*val[1]/math.sin(math.radians(left_angle)) + val[0] - 11/2 - 3.8 + 2.7/2)
+
+UP = 0
+DOWN = 1
+LEFT = 2
+RIGHT = 3
+
+class Arena:
+    # grid =   np.asarray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    obstacles = []
+    def add_obstacle(self, x, y, orientation):
+        self.grid[x][19 - y] = orientation
+        self.obstacles.append((x, y, orientation))
+obstacles = [(4, 6, UP),
+             (10, 4, UP),
+             (1, 8, LEFT),
+             (4, 14, RIGHT),
+             (18, 6, UP),
+             (7, 6, DOWN),
+             (3, 10, UP),]
+# def generate_path(x, y, angle, x_obj, y_obj, angle):
+p_queue_routes = []
+def add_route(route):
+    if len(route) >= len(obstacles):
+        p_queue_routes.append(route[:])
+    for i in range(len(obstacles)):
+        if not i in route:
+            route.append(i)
+            # print(route)
+            add_route(route)
+            route.pop()
+add_route([])
+
+p_queue_routes = [(0, (0, 0, 90), [], route) for route in p_queue_routes]
+# print(p_queue_routes)
+def pathfind():
+    
+
+    p_queue = heapq.heapify(p_queue_routes)
+    while len(p_queue) > 0:
+        current = heapq.heappop(p_queue)
+
+
+# pathfind()
+
+
