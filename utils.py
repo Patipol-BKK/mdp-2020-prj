@@ -101,11 +101,11 @@ print(round(left_angle, 3))
 # print(__SteeringConverter.frontRightToBackRightGap(math.radians(right_angle), PIVOT_OFFSET, FRONT_BACK_GAP))
 
 
-# for i in range (1, 91):
-#     right_angle = i
-#     left_angle = math.degrees(__SteeringConverter.rightToLeft(LINK_LENGTH, LINK_ANGLE, LINK_GAP, math.radians(right_angle)))
-#     val = __SteeringConverter.frontLeftToBackLeftGap(math.radians(left_angle), PIVOT_OFFSET, FRONT_BACK_GAP)
-#     print(i, math.sin(math.radians(90 - left_angle))*val[1]/math.sin(math.radians(left_angle)) + val[0] - 11/2 - 3.8 + 2.7/2)
+for i in range (1, 91):
+    right_angle = i
+    left_angle = math.degrees(__SteeringConverter.rightToLeft(LINK_LENGTH, LINK_ANGLE, LINK_GAP, math.radians(right_angle)))
+    val = __SteeringConverter.frontLeftToBackLeftGap(math.radians(left_angle), PIVOT_OFFSET, FRONT_BACK_GAP)
+    print(i, math.sin(math.radians(90 - left_angle))*val[1]/math.sin(math.radians(left_angle)) + val[0] - 11/2 - 3.8 + 2.7/2)
 
 UP = 0
 DOWN = 1
@@ -353,7 +353,7 @@ def pathfind(waypoint_1, waypoint_2):
 
         # prev_path.append(pos)
 
-        if distance(pos, waypoint_2) < 1 and abs(pos[2] - waypoint_2[2]) < 8:
+        if distance(pos, waypoint_2) < 1 and abs(pos[2] - waypoint_2[2]) < 5:
 
             print(current)
             # path_x = []
@@ -382,7 +382,7 @@ def pathfind(waypoint_1, waypoint_2):
             #     arrowprops=dict(arrowstyle="->"))
 
             plt.show()
-            return cost, prev_path
+            return cost, prev_path[:]
 
         # cost = distance(pos, waypoint_2) + dist_traveled + 1 + abs(pos[2] - waypoint_2[2])*0.05
 
@@ -391,7 +391,7 @@ def pathfind(waypoint_1, waypoint_2):
         steering_mult = 1
         reverse_mult = 1
         angle_mult = 0.1
-        distance_mult = 0.25
+        distance_mult = 0.4
         
         next_pos = compute_pos(pos, LEFT, step)
         if is_valid_pos(next_pos):
@@ -466,13 +466,13 @@ min_cost = 1000000000
 min_path = []
 for route in routes:
     local_cost = cost_mat[0][route[0] + 1]
-    local_path = path_mat[0][route[0] + 1]
+    local_path = path_mat[0][route[0] + 1][:]
     for i in range(len(route) - 1):
         local_cost += cost_mat[int(route[i] + 1)][int(route[i+1] + 1)]
-        local_path += path_mat[int(route[i] + 1)][int(route[i+1] + 1)]
+        local_path += path_mat[int(route[i] + 1)][int(route[i+1] + 1)][:]
     if min_cost > local_cost:
         min_cost = local_cost
-        min_path = local_path[:]
+        min_path = local_path
 print(min_cost)
 
 path_x = []
