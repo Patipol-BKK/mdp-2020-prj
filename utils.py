@@ -43,9 +43,9 @@ MIN_COLLISION_DIST = 15
 
 COLLISION_MASK_RES = 2
 
-NUM_OBJ = 2
+NUM_OBJ = 5
 
-START_POS = (170, 170, 180)
+START_POS = (170, 170, 0)
 
 class __SteeringConverter:
     """
@@ -295,8 +295,8 @@ def compute_pos(pos, direction, distance):
 # plt.show()
 # print(compute_pos((0, 0, 45), RIGHT, -47.124))
 # obstacles = generate_obstacles(NUM_OBJ)
-# obstacles = [(40, 100, 3), (120, 30, 3), (30, 100, 0), (50, 30, 3), (30, 170, 3)]
-obstacles = [(130, 50, 2), (30, 150, 1)]
+obstacles = [(40, 100, 3), (120, 30, 3), (30, 100, 0), (50, 30, 3), (30, 170, 3)]
+# obstacles = [(130, 50, 2), (30, 150, 1)]
 print(obstacles)
 collision_mask = get_collision_mask(obstacles)
 
@@ -326,34 +326,34 @@ def pathfind(waypoint_1, waypoint_2):
         pos = current[2]
         prev_path = current[3]
 
-        x.append(pos[0])
-        y.append(pos[1])
-        if it % 20000 == 0:
-            print(len(p_queue), len(x))
-            fig = plt.figure()
-            ax = plt.gca()
-            ax.set_aspect('equal', adjustable='box')
-            ax.set_xlim([0, 200])
-            ax.set_ylim([0, 200])
-            for i in range(collision_mask.shape[0]):
-                for j in range(collision_mask.shape[0]):
-                    if collision_mask[i][j]:
-                        ax.add_patch(Rectangle((i*COLLISION_MASK_RES, j*COLLISION_MASK_RES), COLLISION_MASK_RES, COLLISION_MASK_RES, facecolor='gray'))
-            plt.scatter(x, y, s=1)
-            plt.show()
+        # x.append(pos[0])
+        # y.append(pos[1])
+        # if it % 20000 == 0:
+        #     print(len(p_queue), len(x))
+        #     fig = plt.figure()
+        #     ax = plt.gca()
+        #     ax.set_aspect('equal', adjustable='box')
+        #     ax.set_xlim([0, 200])
+        #     ax.set_ylim([0, 200])
+        #     for i in range(collision_mask.shape[0]):
+        #         for j in range(collision_mask.shape[0]):
+        #             if collision_mask[i][j]:
+        #                 ax.add_patch(Rectangle((i*COLLISION_MASK_RES, j*COLLISION_MASK_RES), COLLISION_MASK_RES, COLLISION_MASK_RES, facecolor='gray'))
+        #     plt.scatter(x, y, s=1)
+        #     plt.show()
 
 
 
-            for obstacle in obstacles:
-                ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 10, 10))
+        #     for obstacle in obstacles:
+        #         ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 10, 10))
 
-            x = []
-            y = []
+        #     x = []
+        #     y = []
 
 
         # prev_path.append(pos)
 
-        if distance(pos, waypoint_2) < 1 and abs(pos[2] - waypoint_2[2]) < 10:
+        if distance(pos, waypoint_2) < 1 and abs(pos[2] - waypoint_2[2]) < 8:
 
             print(current)
             # path_x = []
@@ -377,73 +377,74 @@ def pathfind(waypoint_1, waypoint_2):
 
             # for obstacle in obstacles:
             #     ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 10, 10))
-            # # for point in prev_path:
-            # #     ax.annotate("", xy=(point[0] + math.sin(math.radians(point[2]))*2, point[1] + math.cos(math.radians(point[2]))*2), xytext=(point[0], point[1]),
-            # #     arrowprops=dict(arrowstyle="->"))
+            # for point in prev_path:
+            #     ax.annotate("", xy=(point[0] + math.sin(math.radians(point[2]))*2, point[1] + math.cos(math.radians(point[2]))*2), xytext=(point[0], point[1]),
+            #     arrowprops=dict(arrowstyle="->"))
 
-            # plt.show()
+            plt.show()
             return cost, prev_path
 
         # cost = distance(pos, waypoint_2) + dist_traveled + 1 + abs(pos[2] - waypoint_2[2])*0.05
 
         # step = distance(pos, waypoint_2)/10
         step = 4
-        steering_mult = 2
-        reverse_mult = 2
+        steering_mult = 1
+        reverse_mult = 1
         angle_mult = 0.1
+        distance_mult = 0.25
         
         next_pos = compute_pos(pos, LEFT, step)
         if is_valid_pos(next_pos):
-            cost = distance(next_pos, waypoint_2) + dist_traveled + 1 + abs(next_pos[2] - waypoint_2[2])*angle_mult
+            cost = distance(next_pos, waypoint_2) + (dist_traveled + step)*distance_mult + abs(next_pos[2] - waypoint_2[2])*angle_mult
             if len(prev_path) > 0:
                 cost += abs(prev_path[len(prev_path) - 1][0] - LEFT)*steering_mult + abs(prev_path[len(prev_path) - 1][1] - step)*reverse_mult
             prev_path.append((LEFT, step))
-            heapq.heappush(p_queue, (cost, dist_traveled + 1, next_pos, prev_path[:]))
+            heapq.heappush(p_queue, (cost, dist_traveled + step, next_pos, prev_path[:]))
             prev_path.pop()
         
         next_pos = compute_pos(pos, STRAIGHT, step)
         if is_valid_pos(next_pos):
-            cost = distance(next_pos, waypoint_2) + dist_traveled + 1 + abs(next_pos[2] - waypoint_2[2])*angle_mult
+            cost = distance(next_pos, waypoint_2) + (dist_traveled + step)*distance_mult + abs(next_pos[2] - waypoint_2[2])*angle_mult
             if len(prev_path) > 0:
                 cost += abs(prev_path[len(prev_path) - 1][0] - STRAIGHT)*steering_mult + abs(prev_path[len(prev_path) - 1][1] - step)*reverse_mult
             prev_path.append((STRAIGHT, step))
-            heapq.heappush(p_queue, (cost, dist_traveled + 1, next_pos, prev_path[:]))
+            heapq.heappush(p_queue, (cost, dist_traveled + step, next_pos, prev_path[:]))
             prev_path.pop()
 
         next_pos = compute_pos(pos, RIGHT, step)
         if is_valid_pos(next_pos):
-            cost = distance(next_pos, waypoint_2) + dist_traveled + 1 + abs(next_pos[2] - waypoint_2[2])*angle_mult
+            cost = distance(next_pos, waypoint_2) + (dist_traveled + step)*distance_mult + abs(next_pos[2] - waypoint_2[2])*angle_mult
             if len(prev_path) > 0:
                 cost += abs(prev_path[len(prev_path) - 1][0] - RIGHT)*steering_mult + abs(prev_path[len(prev_path) - 1][1] - step)*reverse_mult
             prev_path.append((RIGHT, step))
-            heapq.heappush(p_queue, (cost, dist_traveled + 1, next_pos, prev_path[:]))
+            heapq.heappush(p_queue, (cost, dist_traveled + step, next_pos, prev_path[:]))
             prev_path.pop()
 
         next_pos = compute_pos(pos, LEFT, -step)
         if is_valid_pos(next_pos):
-            cost = distance(next_pos, waypoint_2) + dist_traveled + 1 + abs(next_pos[2] - waypoint_2[2])*angle_mult
+            cost = distance(next_pos, waypoint_2) + (dist_traveled + step)*distance_mult + abs(next_pos[2] - waypoint_2[2])*angle_mult
             if len(prev_path) > 0:
                 cost += abs(prev_path[len(prev_path) - 1][0] - LEFT)*steering_mult + abs(prev_path[len(prev_path) - 1][1] + step)*reverse_mult
             prev_path.append((LEFT, -step))
-            heapq.heappush(p_queue, (cost, dist_traveled + 1, next_pos, prev_path[:]))
+            heapq.heappush(p_queue, (cost, dist_traveled + step, next_pos, prev_path[:]))
             prev_path.pop()
 
         next_pos = compute_pos(pos, STRAIGHT, -step)
         if is_valid_pos(next_pos):
-            cost = distance(next_pos, waypoint_2) + dist_traveled + 1 + abs(next_pos[2] - waypoint_2[2])*angle_mult
+            cost = distance(next_pos, waypoint_2) + (dist_traveled + step)*distance_mult + abs(next_pos[2] - waypoint_2[2])*angle_mult
             if len(prev_path) > 0:
                 cost += abs(prev_path[len(prev_path) - 1][0] - STRAIGHT)*steering_mult + abs(prev_path[len(prev_path) - 1][1] + step)*reverse_mult
             prev_path.append((STRAIGHT, -step))
-            heapq.heappush(p_queue, (cost, dist_traveled + 1, next_pos, prev_path[:]))
+            heapq.heappush(p_queue, (cost, dist_traveled + step, next_pos, prev_path[:]))
             prev_path.pop()
 
         next_pos = compute_pos(pos, RIGHT, -step)
         if is_valid_pos(next_pos):
-            cost = distance(next_pos, waypoint_2) + dist_traveled + 1 + abs(next_pos[2] - waypoint_2[2])*angle_mult
+            cost = distance(next_pos, waypoint_2) + (dist_traveled + step)*distance_mult + abs(next_pos[2] - waypoint_2[2])*angle_mult
             if len(prev_path) > 0:
                 cost += abs(prev_path[len(prev_path) - 1][0] - RIGHT)*steering_mult + abs(prev_path[len(prev_path) - 1][1] + step)*reverse_mult
             prev_path.append((RIGHT, -step))
-            heapq.heappush(p_queue, (cost, dist_traveled + 1, next_pos, prev_path[:]))
+            heapq.heappush(p_queue, (cost, dist_traveled + step, next_pos, prev_path[:]))
             prev_path.pop()
         it += 1
 
@@ -456,9 +457,8 @@ for i in range(NUM_OBJ + 1):
     path_mat.append(path_list[:])
 
 for i in range(NUM_OBJ):
-    cost_mat[0][i + 1], path = pathfind(START_POS, get_waypoint(obstacles[i]))
-    path_mat[0][i + 1] = path
-    for j in range(i + 1, NUM_OBJ):
+    cost_mat[0][i + 1], path_mat[0][i + 1] = pathfind(START_POS, get_waypoint(obstacles[i]))
+    for j in range(NUM_OBJ):
         cost_mat[i + 1][j + 1], path_mat[i + 1][j + 1] = pathfind(get_waypoint(obstacles[i]), get_waypoint(obstacles[j]))
 
 add_route([])
@@ -468,12 +468,13 @@ for route in routes:
     local_cost = cost_mat[0][route[0] + 1]
     local_path = path_mat[0][route[0] + 1]
     for i in range(len(route) - 1):
-        local_cost += cost_mat[int(min(route[i], route[i+1]) + 1)][int(max(route[i], route[i+1]) + 1)]
-        local_path += path_mat[int(min(route[i], route[i+1]) + 1)][int(max(route[i], route[i+1]) + 1)]
+        local_cost += cost_mat[int(route[i] + 1)][int(route[i+1] + 1)]
+        local_path += path_mat[int(route[i] + 1)][int(route[i+1] + 1)]
     if min_cost > local_cost:
         min_cost = local_cost
-        min_path = local_path
+        min_path = local_path[:]
 print(min_cost)
+
 path_x = []
 path_y = []
 ax = plt.gca()
