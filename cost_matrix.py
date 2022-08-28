@@ -9,7 +9,7 @@ from mpl_toolkits import mplot3d
 # Ref paper: Practical Search Techniques in Path Planning for Autonomous Driving 
 # Paper link: https://ai.stanford.edu/~ddolgov/papers/dolgov_gpp_stair08.pdf
 
-MATRIX_RES = 10
+MATRIX_RES = 100
 CELL_SIZE = 200/MATRIX_RES
 ANGLE_RES = 16
 # 10x10x4 pre-compute costs
@@ -85,9 +85,9 @@ def coor_as_index(pos):
     min_angle = 0
     for i in range(ANGLE_RES):
         if i == 0:
-            local_dif = min(pos[2], abs(360 - pos[2]))
+            local_dif = min(pos[2], abs(2*math.pi - pos[2]))
         else:
-            local_dif = abs(i*360/ANGLE_RES - pos[2])
+            local_dif = abs(i*2*math.pi/ANGLE_RES - pos[2])
         # print(i, local_dif, min_dif)
         if local_dif < min_dif:
             min_angle = i
@@ -112,84 +112,226 @@ def compute_cost():
 
         cur_index = coor_as_index(pos)
         prev_index = coor_as_index(prev)
-        # print(cost, cur_index)
+        print(len(p_queue))
         if cost_grid[cur_index[0]][cur_index[1]][cur_index[2]] > cost:
             cost_grid[cur_index[0]][cur_index[1]][cur_index[2]] = cost
             for i in range(3):
                 prev_grid[cur_index[0]][cur_index[1]][cur_index[2]][i] = prev_index[i]
+        else:
+            cost = cost_grid[cur_index[0]][cur_index[1]][cur_index[2]]
+            prev_index  = prev_grid[cur_index[0]][cur_index[1]][cur_index[2]][0], prev_grid[cur_index[0]][cur_index[1]][cur_index[2]][1], prev_grid[cur_index[0]][cur_index[1]][cur_index[2]][2]
+        
 
-            arc_dist = 0
-            new_theta = pos[2]
-            for i in range(-MATRIX_RES, MATRIX_RES+1):
-                for j in range(-MATRIX_RES, MATRIX_RES+1):
-                    delta_x = i - pos[0]
-                    delta_y = j - pos[1]
-                    if delta_x == 0:
-                        arc_dist = abs(delta_y)
-                        new_theta = pos[2]
+        arc_dist = 0
+        new_theta = pos[2]
+        for i in range(-MATRIX_RES, MATRIX_RES+1):
+            for j in range(-MATRIX_RES, MATRIX_RES+1):
+                delta_x = i*CELL_SIZE - pos[0]
+                delta_y = j*CELL_SIZE - pos[1]
+
+
+               # Discard visiting same location
+                if delta_x == 0 and delta_y == 0:
+                    continue
+
+                # Heading of the cell respect to current location
+                if delta_y == 0:
+                    if delta_x > 0:
+                        theta = math.pi/2
                     else:
-                        distance = math.sqrt(delta_x**2 + delta_y**2)
-                        alpha_rad = math.atan(delta_y/delta_x)
-                        turning_angle_rad = math.pi - 2*(alpha_rad + math.radians(pos[2]))
-                        if math.sin(turning_angle_rad) == 0:
-                            continue
+                        theta = 3*math.pi/2
+                elif delta_y > 0:
+                    theta = math.atan(delta_x/delta_y)
+                else:
+                    theta = math.pi - math.atan(delta_x/(-delta_y))
+
+                delta_theta = (theta - pos[2])%(2*math.pi)
+                distance = math.sqrt(delta_x**2 + delta_y**2)
+                new_theta = 0
+                # Straight forwards
+                if delta_theta == 0:
+                    arc_dist = distance
+                    new_theta = theta
+
+                # Forwards right
+                elif delta_theta > 0 and delta_theta <= math.pi/4:
+                    alpha = math.pi/2 - delta_theta
+                    turning_angle = math.pi - 2*alpha
+                    if turning_angle == 0:
+                        arc_dist = distance
+                        new_theta = theta
+                    else:
+                        arc_radius = math.sin(alpha)*(distance/math.sin(turning_angle))
+                        if arc_radius > MIN_TURNING_RADS:
+                            arc_dist = arc_radius*turning_angle
+                            new_theta = (theta + delta_theta)%(2*math.pi)
                         else:
-                            turning_radius = math.sin(alpha_rad + math.radians(pos[2]))*distance/math.sin(turning_angle_rad)
-
-                        new_theta = math.degrees(math.pi - 2*alpha_rad - math.radians(pos[2]))
-                        # if turning_radius > 17:
-                        if delta_x >= 0:
-                            if turning_angle_rad > math.pi:
-                                arc_dist = (math.pi*2-turning_angle_rad)*turning_radius
-                            elif turning_angle_rad < math.pi:
-                                arc_dist = turning_angle_rad*turning_radius
-                            else:
-                                arc_dist = turning_angle_rad*delta_x/2
-
-                        delta_x = pos[0] - i
-                        delta_y = j - pos[1]
-                        distance = math.sqrt(delta_x**2 + delta_y**2)
-                        alpha_rad = math.atan(delta_y/delta_x)
-                        turning_angle_rad = math.pi - 2*(alpha_rad + math.radians(pos[2]))
-                        if math.sin(turning_angle_rad) == 0:
                             continue
-                        else:
-                            turning_radius = math.sin(alpha_rad + math.radians(pos[2]))*distance/math.sin(turning_angle_rad)
 
-                        new_theta = math.degrees(math.pi*2 - (math.pi - 2*alpha_rad - math.radians(pos[2])))
-                        if delta_x >= 0:
-                            if turning_angle_rad > math.pi:
-                                arc_dist = (math.pi*2-turning_angle_rad)*turning_radius
-                            elif turning_angle_rad < math.pi:
-                                arc_dist = turning_angle_rad*turning_radius
-                            else:
-                                arc_dist = turning_angle_rad*delta_x/2
-                    next_index = coor_as_index((i, j, new_theta))
-                    if cost_grid[next_index[0]][next_index[1]][next_index[2]] > cost + arc_dist:
-                        print(arc_dist, (i, j, new_theta))
-                        heapq.heappush(p_queue, (cost + arc_dist, (i, j, new_theta), pos))
+                # Forwards left
+                elif delta_theta < 2*math.pi and delta_theta >= 7*math.pi/4:
+                    small_delta_theta = 2*math.pi - delta_theta
+                    alpha = math.pi/2 - small_delta_theta
+                    turning_angle = math.pi - 2*alpha
+                    if turning_angle == 0:
+                        arc_dist = distance
+                        new_theta = theta
+                    else:
+                        arc_radius = math.sin(alpha)*(distance/math.sin(turning_angle))
+                        if arc_radius > MIN_TURNING_RADS:
+                            arc_dist = arc_radius*turning_angle
+                            new_theta = (theta - small_delta_theta)%(2*math.pi)
+                        else:
+                            continue
+
+                # Straight backwards
+                elif delta_theta == 180:
+                    arc_dist = distance
+                    new_theta = pos[2]
+
+                # Backwards right
+                elif delta_theta < math.pi and delta_theta >= 3*math.pi/4:
+                    small_delta_theta = math.pi - delta_theta
+                    alpha = math.pi/2 - small_delta_theta
+                    turning_angle = math.pi - 2*alpha
+                    if turning_angle == 0:
+                        arc_dist = distance
+                        new_theta = (theta - math.pi)%(2*math.pi)
+                    else:
+                        arc_radius = math.sin(alpha)*(distance/math.sin(turning_angle))
+                        if arc_radius > MIN_TURNING_RADS:
+                            arc_dist = arc_radius*turning_angle
+                            new_theta = (theta - small_delta_theta - math.pi)%(2*math.pi)
+                        else:
+                            continue
+
+                # Backwards left
+                elif delta_theta > math.pi and delta_theta <= 5*math.pi/4:
+                    small_delta_theta = delta_theta - math.pi
+                    alpha = math.pi/2 - small_delta_theta
+                    turning_angle = math.pi - 2*alpha
+                    if turning_angle == 0:
+                        arc_dist = distance
+                        new_theta = (theta - math.pi)%(2*math.pi)
+                    else:
+                        arc_radius = math.sin(alpha)*(distance/math.sin(turning_angle))
+                        if arc_radius > MIN_TURNING_RADS:
+                            arc_dist = arc_radius*turning_angle
+                            new_theta = (theta + small_delta_theta - math.pi)%(2*math.pi)
+                        else:
+                            continue
+                else:
+                    continue
+
+                next_index = coor_as_index((i*CELL_SIZE, j*CELL_SIZE, new_theta))
+                if cost_grid[next_index[0]][next_index[1]][next_index[2]] > cost + arc_dist:
+                    cost_grid[next_index[0]][next_index[1]][next_index[2]] = cost + arc_dist
+                    for idx in range(3):
+                        prev_grid[next_index[0]][next_index[1]][next_index[2]][idx] = pos[idx]
+                    heapq.heappush(p_queue, (cost + arc_dist, (i*CELL_SIZE, j*CELL_SIZE, new_theta), pos))
+                    #     print(arc_dist, (i, j, new_theta))
+                    #     heapq.heappush(p_queue, (cost + arc_dist, (i, j, new_theta), pos))
+            # print(val)
+
+            # X, Y = np.meshgrid(x, y)
+
+            # fig = plt.figure()
+            # ax = plt.gca()
+            # cm = plt.cm.get_cmap('viridis')
+            # ax.set_aspect('equal', adjustable='box')
+            # plt.scatter(X, Y, c=val, cmap=cm)
+            # # ax.plot_surface(X, Y, val)
+            # # plt.contourf(X, Y, val)
+            # plt.show()
+
+                    # if delta_x == 0:
+                    #     arc_dist = abs(delta_y)
+                    #     new_theta = pos[2]
+                    # else:
+                    #     distance = math.sqrt(delta_x**2 + delta_y**2)
+                    #     alpha_rad = math.atan(delta_y/delta_x)
+                    #     turning_angle_rad = math.pi - 2*(alpha_rad + math.radians(pos[2]))
+                    #     if math.sin(turning_angle_rad) == 0:
+                    #         continue
+                    #     else:
+                    #         turning_radius = math.sin(alpha_rad + math.radians(pos[2]))*distance/math.sin(turning_angle_rad)
+
+                    #     new_theta = math.degrees(math.pi - 2*alpha_rad - math.radians(pos[2]))
+                    #     # if turning_radius > 17:
+                    #     if delta_x >= 0:
+                    #         if turning_angle_rad > math.pi:
+                    #             arc_dist = (math.pi*2-turning_angle_rad)*turning_radius
+                    #         elif turning_angle_rad < math.pi:
+                    #             arc_dist = turning_angle_rad*turning_radius
+                    #         else:
+                    #             arc_dist = turning_angle_rad*delta_x/2
+
+                    #     delta_x = pos[0] - i
+                    #     delta_y = j - pos[1]
+                    #     distance = math.sqrt(delta_x**2 + delta_y**2)
+                    #     alpha_rad = math.atan(delta_y/delta_x)
+                    #     turning_angle_rad = math.pi - 2*(alpha_rad + math.radians(pos[2]))
+                    #     if math.sin(turning_angle_rad) == 0:
+                    #         continue
+                    #     else:
+                    #         turning_radius = math.sin(alpha_rad + math.radians(pos[2]))*distance/math.sin(turning_angle_rad)
+
+                    #     new_theta = math.degrees(math.pi*2 - (math.pi - 2*alpha_rad - math.radians(pos[2])))
+                    #     if delta_x >= 0:
+                    #         if turning_angle_rad > math.pi:
+                    #             arc_dist = (math.pi*2-turning_angle_rad)*turning_radius
+                    #         elif turning_angle_rad < math.pi:
+                    #             arc_dist = turning_angle_rad*turning_radius
+                    #         else:
+                    #             arc_dist = turning_angle_rad*delta_x/2
+                    # next_index = coor_as_index((i, j, new_theta))
+                    # if cost_grid[next_index[0]][next_index[1]][next_index[2]] > cost + arc_dist:
+                    #     print(arc_dist, (i, j, new_theta))
+                    #     heapq.heappush(p_queue, (cost + arc_dist, (i, j, new_theta), pos))
 
                     # new_theta = 
                     # distance = math.sqrt((i - pos[0])**2 + (j - pos[1])**2)
-    for i in range(MATRIX_RES*2+1):
-        for j in range(MATRIX_RES*2+1):
-            val[i][j] = cost_grid[i][j][0]
-    print(val)
-    X, Y = np.meshgrid(x, y)
+    # for i in range(MATRIX_RES*2+1):
+    #     for j in range(MATRIX_RES*2+1):
+    #         val[i][j] = cost_grid[i][j][0]
+    # print(val)
+    # X, Y = np.meshgrid(x, y)
 
-    fig = plt.figure()
-    ax = plt.gca()
-    cm = plt.cm.get_cmap('viridis')
-    ax.set_aspect('equal', adjustable='box')
-    plt.scatter(X, Y, c=val, cmap=cm)
-    # ax.plot_surface(X, Y, val)
-    # plt.contourf(X, Y, val)
-    plt.show()
+    # fig = plt.figure()
+    # ax = plt.gca()
+    # cm = plt.cm.get_cmap('viridis')
+    # ax.set_aspect('equal', adjustable='box')
+    # plt.scatter(X, Y, c=val, cmap=cm)
+    # # ax.plot_surface(X, Y, val)
+    # # plt.contourf(X, Y, val)
+    # plt.show()
 
 
 compute_cost()
+np.save('cost_grid_100_turnlimit.npy', cost_grid)
+np.save('prev_grid_100_turnlimit.npy', prev_grid)
+# cost_grid = np.load('cost_grid.npy')
+# prev_grid = np.load('prev_grid.npy')
+cur_pos = (0, 0, math.pi)
 
-
+x = []
+y = []
+while cur_pos[0] != 0 or cur_pos[1] != 0 or cur_pos[2] != 0:
+    x.append(cur_pos[0])
+    y.append(cur_pos[1])
+    cur_index = coor_as_index(cur_pos)
+    print(cur_pos, cost_grid[cur_index[0]][cur_index[1]][cur_index[2]])
+    cur_pos = prev_grid[cur_index[0]][cur_index[1]][cur_index[2]]
+print(cur_pos)
+x.append(cur_pos[0])
+y.append(cur_pos[1])    
+fig = plt.figure()
+ax = plt.gca()
+ax.set_aspect('equal', adjustable='box')
+ax.set_xlim([-MATRIX_RES*CELL_SIZE, MATRIX_RES*CELL_SIZE])
+ax.set_ylim([-MATRIX_RES*CELL_SIZE, MATRIX_RES*CELL_SIZE])
+plt.plot(x, y)
+plt.show()
 
 def pathfind(waypoint_1, waypoint_2):
     p_queue = [(0, 0, waypoint_1, [])]
