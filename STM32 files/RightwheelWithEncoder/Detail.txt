@@ -1,0 +1,7 @@
+configurated
+1. right wheel
+2. servo
+3. encoder (untested due to failure of configuration of OLED display)
+
+Error in configuration
+1. OLED display
