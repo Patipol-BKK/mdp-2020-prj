@@ -11,9 +11,9 @@ from numba import jit
 # Ref paper: Practical Search Techniques in Path Planning for Autonomous Driving 
 # Paper link: https://ai.stanford.edu/~ddolgov/papers/dolgov_gpp_stair08.pdf
 
-MATRIX_RES = 100
+MATRIX_RES = 10
 CELL_SIZE = 200/MATRIX_RES
-ANGLE_RES = 36
+ANGLE_RES = 16
 # 10x10x4 pre-compute costs
 
 
@@ -275,14 +275,14 @@ def compute_cost():
             # plt.show()
     return cost_grid_temp, prev_grid_temp
 
-start = time.time()
-cost_grid, prev_grid = compute_cost()
-print("Elapsed = " + str((time.time() - start)/60))
-np.save('cost_grid_100_36_turnlimit.npy', cost_grid)
-np.save('prev_grid_100_36_turnlimit.npy', prev_grid)
-# cost_grid = np.load('cost_grid.npy')
-# prev_grid = np.load('prev_grid.npy')
-cur_pos = (0, 0, math.pi)
+# start = time.time()
+# cost_grid, prev_grid = compute_cost()
+# print("Elapsed = " + str((time.time() - start)/60))
+# np.save('cost_grid_100_36_turnlimit.npy', cost_grid)
+# np.save('prev_grid_100_36_turnlimit.npy', prev_grid)
+cost_grid = np.load('precomputed_costmatrices/cost_grid.npy')
+prev_grid = np.load('precomputed_costmatrices/prev_grid.npy')
+cur_pos = (200, 200, math.pi)
 
 x = []
 y = []

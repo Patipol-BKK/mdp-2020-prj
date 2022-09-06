@@ -43,7 +43,7 @@ MIN_COLLISION_DIST = 15
 
 COLLISION_MASK_RES = 2
 
-NUM_OBJ = 5
+NUM_OBJ = 2
 
 START_POS = (170, 170, 0)
 
@@ -246,9 +246,7 @@ def generate_obstacles(num_obstacles):
 # print(p_queue_routes)
 
 
-LEFT = 0
-STRAIGHT = 1
-RIGHT = 2
+ 
 
 def compute_pos(pos, direction, distance):
     if direction == STRAIGHT:
@@ -295,8 +293,8 @@ def compute_pos(pos, direction, distance):
 # plt.show()
 # print(compute_pos((0, 0, 45), RIGHT, -47.124))
 # obstacles = generate_obstacles(NUM_OBJ)
-obstacles = [(40, 100, 3), (120, 30, 3), (30, 100, 0), (50, 30, 3), (30, 170, 3)]
-# obstacles = [(130, 50, 2), (30, 150, 1)]
+# obstacles = [(40, 100, 3), (120, 30, 3), (30, 100, 0), (50, 30, 3), (30, 170, 3)]
+obstacles = [(130, 50, 2), (30, 150, 1)]
 print(obstacles)
 collision_mask = get_collision_mask(obstacles)
 
@@ -312,6 +310,8 @@ def is_valid_pos(pos):
 
 path_x = []
 path_y = []
+
+
 def pathfind(waypoint_1, waypoint_2):
     x = []
     y = []
@@ -389,9 +389,9 @@ def pathfind(waypoint_1, waypoint_2):
         # step = distance(pos, waypoint_2)/10
         step = 4
         steering_mult = 1
-        reverse_mult = 1
+        reverse_mult = 2
         angle_mult = 0.1
-        distance_mult = 0.4
+        distance_mult = 0.25
         
         next_pos = compute_pos(pos, LEFT, step)
         if is_valid_pos(next_pos):
