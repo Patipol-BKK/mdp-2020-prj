@@ -1,7 +1,7 @@
 # mdp-2020-prj
 
 ## Algo
-Executions for running the algo is handled on the PC by a nodejs server. To start the server, execute:
+Executions for running the algo is handled on the PC by a nodejs server. To start the server, navigate to the python directory and execute:
 ```
 node app.js
 ```
