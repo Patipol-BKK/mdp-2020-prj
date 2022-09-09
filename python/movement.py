@@ -8,32 +8,40 @@ from mpl_toolkits import mplot3d
 import time
 import sys
 
+####### TO-DO #######
+# - Implement function for finding optimal obstacle order to go to
+# - Optimize instruction code (group same consecutive operations into a single one e.g. FW10 FW10 FW10 to FW30)
+# - Rewrite code to be compatible with numba
+# - Get rid of unnecessary global variables
+
+
 # Define direction codes
 UP = 0
 DOWN = 1
 LEFT = 2
 RIGHT = 3
-# For testing
+
 # Obstacles are stored as tuples of (x, y, orientation)
 #   - x, y are the cell in which the object is located. (0, 0) is at lower left corner
 #   - orient is the direction
-obstacles = eval(sys.argv[1])
+obstacles = eval(sys.argv[1])   # Read obstacle string
 print(obstacles)
+
 # obstacles = [(4, 10, 3), (12, 3, 3), (3, 10, 0), (5, 3, 3), (3, 17, 3)] # For testing
 
-cost_grid = np.full((20, 20, 4), 10000000000, dtype=int)
+cost_grid = np.full((20, 20, 4), 10000000000, dtype=int)    
 prev_grid = np.zeros((20, 20, 4, 3), dtype=int)
 coll_grid = np.zeros((20, 20), dtype=int)
 
 
-
+# Returns a 2D grid with 1s and 0s indicating where obstacles occupy
 def get_disc_collision_mask():
     for obstacle in obstacles:
         coll_grid[int(obstacle[0])][int(obstacle[1])] = 1
     return coll_grid
 
 # Creates adgacency matrix of traversable points within the 20x20 grid with 4 possible orientations.
-# @jit(nopython=True)
+# @jit(nopython=True)       # Need to fix func later to make it compatible with numba
 def create_graph():
     edges = np.zeros((20, 20, 4, 20, 20, 4), dtype=int)
     for idx_x in range(0, 20):
@@ -214,7 +222,7 @@ def get_stop_pos(obst):
 coll_grid = get_disc_collision_mask()
 edges = create_graph()
 
-# @jit(nopython=True)
+# @jit(nopython=True)           # Need to fix func later to make it compatible with numba
 def discrete_pathfind(start_pos, end_pos):
     p_queue = [(0, start_pos, (-1, -1, -1))]
     heapq.heapify(p_queue)
@@ -224,7 +232,6 @@ def discrete_pathfind(start_pos, end_pos):
         cur_pos = cur[1]
         prev = cur[2]
 
-        # print(cur[1])
         if(cur_pos == end_pos):
             return cost, prev
 
@@ -243,6 +250,8 @@ path_x = []
 path_y = []
 instr = []
 start = time.time()
+
+### Need to fix func later to make it compatible with numba
 for i in range(len(obstacles) - 1):
     # for j in range(len(obstacles)):
     cost_grid = np.full((20, 20, 4), 10000000000, dtype=int)
@@ -326,6 +335,9 @@ for i in range(len(obstacles) - 1):
         prev = cur
         cur = (prev_grid[cur[0]][cur[1]][cur[2]][0], prev_grid[cur[0]][cur[1]][cur[2]][1], prev_grid[cur[0]][cur[1]][cur[2]][2])
     instr.append("S")
+
+    ###### Uncomment below to plot path in matplotlib ######
+
     # ax = plt.gca()
     # ax.set_aspect('equal', adjustable='box')
     # ax.set_xlim([0, 20])
@@ -339,10 +351,14 @@ for i in range(len(obstacles) - 1):
     #     ax.annotate("", xy=(point[0] + math.sin(math.radians(point[2]))*2, point[1] + math.cos(math.radians(point[2]))*2), xytext=(point[0], point[1]),
     #     arrowprops=dict(arrowstyle="->"))
 
-    plt.show()
+    # plt.show()
+
 print(instr)
 print("Time taken: " + str(time.time() - start) + " sec")
-# import socket
+
+
+# Still sorta broken
+import socket
 
 HOST = '192.168.28.28' # Enter IP or Hostname of your server
 PORT = 25000 # Pick an open Port (1000+ recommended), must match the server port
