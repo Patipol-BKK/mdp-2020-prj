@@ -4,9 +4,11 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from mpl_toolkits import mplot3d
-# from numba import jit
+import numba
+from numba import jit
 import time
 import sys
+import itertools
 
 ####### TO-DO #######
 # - Implement function for finding optimal obstacle order to go to
@@ -21,29 +23,17 @@ DOWN = 1
 LEFT = 2
 RIGHT = 3
 
-# Obstacles are stored as tuples of (x, y, orientation)
-#   - x, y are the cell in which the object is located. (0, 0) is at lower left corner
-#   - orient is the direction
-obstacles = eval(sys.argv[1])   # Read obstacle string
-print(obstacles)
-
-# obstacles = [(4, 10, 3), (12, 3, 3), (3, 10, 0), (5, 3, 3), (3, 17, 3)] # For testing
-
-cost_grid = np.full((20, 20, 4), 10000000000, dtype=int)    
-prev_grid = np.zeros((20, 20, 4, 3), dtype=int)
-coll_grid = np.zeros((20, 20), dtype=int)
-
-
 # Returns a 2D grid with 1s and 0s indicating where obstacles occupy
 def get_disc_collision_mask():
+    coll_grid = np.zeros((20, 20), dtype=int)
     for obstacle in obstacles:
         coll_grid[int(obstacle[0])][int(obstacle[1])] = 1
     return coll_grid
 
 # Creates adgacency matrix of traversable points within the 20x20 grid with 4 possible orientations.
-# @jit(nopython=True)       # Need to fix func later to make it compatible with numba
-def create_graph():
-    edges = np.zeros((20, 20, 4, 20, 20, 4), dtype=int)
+@jit(nopython=True)       # Need to fix func later to make it compatible with numba
+def create_graph(coll_grid):
+    edges = np.zeros((20, 20, 4, 20, 20, 4))
     for idx_x in range(0, 20):
         for idx_y in range(0, 20):
             for idx_theta in range(0, 4):
@@ -210,6 +200,7 @@ def create_graph():
     return edges;
 
 # Returns the stopping position of the robot for the obstacle
+@jit(nopython=True)
 def get_stop_pos(obst):
     if obst[2] == UP:
         return (obst[0], obst[1] + 3, DOWN)
@@ -219,11 +210,9 @@ def get_stop_pos(obst):
         return (obst[0] - 3, obst[1], RIGHT)
     elif obst[2] == RIGHT:
         return (obst[0] + 3, obst[1], LEFT)
-coll_grid = get_disc_collision_mask()
-edges = create_graph()
 
-# @jit(nopython=True)           # Need to fix func later to make it compatible with numba
-def discrete_pathfind(start_pos, end_pos):
+@jit(nopython=True)           # Need to fix func later to make it compatible with numba
+def discrete_pathfind(start_pos, end_pos, cost_grid, prev_grid):
     p_queue = [(0, start_pos, (-1, -1, -1))]
     heapq.heapify(p_queue)
     while(len(p_queue) > 0):
@@ -245,96 +234,109 @@ def discrete_pathfind(start_pos, end_pos):
                     for theta in range(0, 4):
                         edge = edges[cur_pos[0]][cur_pos[1]][cur_pos[2]][i][j][theta]
                         if edge > 0:
-                            heapq.heappush(p_queue, ((cost + edge), (i,j,theta), cur_pos))
-path_x = []
-path_y = []
-instr = []
-start = time.time()
+                            heapq.heappush(p_queue, (int(cost + edge), (i,j,theta), cur_pos))
+# Returns a list of all the possible orders for numbers from 1 to num in a list
+def generate_permutations(num):
+    return list(itertools.permutations([x for x in range(1, num + 1)]))
 
-### Need to fix func later to make it compatible with numba
-for i in range(len(obstacles) - 1):
-    # for j in range(len(obstacles)):
-    cost_grid = np.full((20, 20, 4), 10000000000, dtype=int)
-    prev_grid = np.zeros((20, 20, 4, 3), dtype=int)
-    start_pos = get_stop_pos(obstacles[i])
-    end_pos = get_stop_pos(obstacles[i+1])
-    cost, prev = discrete_pathfind(end_pos, start_pos)
 
-    cur = prev
-    prev = start_pos
-    path_x.append(prev[0] + 0.5)
-    path_y.append(prev[1] + 0.5)
-    while cur != (-1, -1, -1):
-        if prev[2] == UP:
-            if cur[2] == UP:
-                if cur[1] - prev[1] > 0:
-                    instr.append("F" + str((cur[1] - prev[1])*10))
-                else:
-                    instr.append("B" + str((prev[1] - cur[1])*10))
-            elif cur[2] == LEFT:
-                if cur[1] > prev[1]: 
-                    instr.append("L" + str((cur[1] - prev[1])*10))
-                else:
-                    instr.append("R" + str((cur[1] - prev[1])*10))
-            elif cur[2] == RIGHT:
-                if cur[1] > prev[1]:
-                    instr.append("R" + str((cur[1] - prev[1])*10))
-                else:
-                    instr.append("L" + str((cur[1] - prev[1])*10))
-        elif prev[2] == DOWN:
-            if cur[2] == DOWN:
-                if cur[1] - prev[1] > 0:
-                    instr.append("B" + str((cur[1] - prev[1])*10))
-                else:
-                    instr.append("F" + str((prev[1] - cur[1])*10))
-            elif cur[2] == LEFT:
-                if prev[1] > cur[1]:
-                    instr.append("R" + str((prev[1] - cur[1])*10))
-                else:
-                    instr.append("L" + str((prev[1] - cur[1])*10))
-            elif cur[2] == RIGHT:
-                if prev[1] > cur[1]:
-                    instr.append("L" + str((prev[1] - cur[1])*10))
-                else:
-                    instr.append("R" + str((prev[1] - cur[1])*10))
-        elif prev[2] == LEFT:
-            if cur[2] == LEFT:
-                if cur[0] - prev[0] > 0:
-                    instr.append("B" + str((cur[0] - prev[0])*10))
-                else:
-                    instr.append("F" + str((prev[0] - cur[0])*10))
-            elif cur[2] == UP:
-                if prev[0] > cur[0]:
-                    instr.append("R" + str((prev[0] - cur[0])*10))
-                else:
-                    instr.append("L" + str((prev[0] - cur[0])*10))
-            elif cur[2] == DOWN:
-                if prev[0] > cur[0]:
-                    instr.append("L" + str((prev[0] - cur[0])*10))
-                else:
-                    instr.append("R" + str((prev[0] - cur[0])*10))
-        elif prev[2] == RIGHT:
-            if cur[2] == RIGHT:
-                if cur[0] - prev[0] > 0:
-                    instr.append("F" + str((cur[0] - prev[0])*10))
-                else:
-                    instr.append("B" + str((prev[0] - cur[0])*10))
-            elif cur[2] == UP:
-                if cur[0] > prev[0]:
-                    instr.append("L" + str((cur[0] - prev[0])*10))
-                else:
-                    instr.append("R" + str((cur[0] - prev[0])*10))
-            elif cur[2] == DOWN:
-                if cur[0] > prev[0]:
-                    instr.append("R" + str((cur[0] - prev[0])*10))
-                else:
-                    instr.append("L" + str((cur[0] - prev[0])*10))
-        path_x.append(cur[0] + 0.5)
-        path_y.append(cur[1] + 0.5)
-        # print(cur)
-        prev = cur
-        cur = (prev_grid[cur[0]][cur[1]][cur[2]][0], prev_grid[cur[0]][cur[1]][cur[2]][1], prev_grid[cur[0]][cur[1]][cur[2]][2])
-    instr.append("S")
+def get_distance_graph(obstacles, coll_grid):
+    # permu_list = [[0] + list(x) for x in generate_permutations(len(obstacles))]
+
+    # print(permu_list)
+    cost_matrix = np.zeros((len(obstacles) + 1, len(obstacles) + 1))
+
+    path_x = []
+    path_y = []
+    instr = []
+    for i in range(len(obstacles)):
+        for j in range(i + 1, len(obstacles)):
+            cost_grid = np.full((20, 20, 4), 2147483647)
+            prev_grid = np.zeros((20, 20, 4, 3))
+            # for j in range(len(obstacles)):
+            if i == 0:
+                start_pos = (7, 7, 1)
+            else:
+                start_pos = get_stop_pos(obstacles[i - 1])
+            end_pos = get_stop_pos(obstacles[j])
+            cost, prev = discrete_pathfind(end_pos, start_pos, cost_grid, prev_grid)
+
+            cur = prev
+            prev = start_pos
+            path_x.append(prev[0] + 0.5)
+            path_y.append(prev[1] + 0.5)
+            while cur != (-1, -1, -1):
+                if prev[2] == UP:
+                    if cur[2] == UP:
+                        if cur[1] - prev[1] > 0:
+                            instr.append("F" + str((cur[1] - prev[1])*10))
+                        else:
+                            instr.append("B" + str((prev[1] - cur[1])*10))
+                    elif cur[2] == LEFT:
+                        if cur[1] > prev[1]: 
+                            instr.append("L" + str((cur[1] - prev[1])*10))
+                        else:
+                            instr.append("R" + str((cur[1] - prev[1])*10))
+                    elif cur[2] == RIGHT:
+                        if cur[1] > prev[1]:
+                            instr.append("R" + str((cur[1] - prev[1])*10))
+                        else:
+                            instr.append("L" + str((cur[1] - prev[1])*10))
+                elif prev[2] == DOWN:
+                    if cur[2] == DOWN:
+                        if cur[1] - prev[1] > 0:
+                            instr.append("B" + str((cur[1] - prev[1])*10))
+                        else:
+                            instr.append("F" + str((prev[1] - cur[1])*10))
+                    elif cur[2] == LEFT:
+                        if prev[1] > cur[1]:
+                            instr.append("R" + str((prev[1] - cur[1])*10))
+                        else:
+                            instr.append("L" + str((prev[1] - cur[1])*10))
+                    elif cur[2] == RIGHT:
+                        if prev[1] > cur[1]:
+                            instr.append("L" + str((prev[1] - cur[1])*10))
+                        else:
+                            instr.append("R" + str((prev[1] - cur[1])*10))
+                elif prev[2] == LEFT:
+                    if cur[2] == LEFT:
+                        if cur[0] - prev[0] > 0:
+                            instr.append("B" + str((cur[0] - prev[0])*10))
+                        else:
+                            instr.append("F" + str((prev[0] - cur[0])*10))
+                    elif cur[2] == UP:
+                        if prev[0] > cur[0]:
+                            instr.append("R" + str((prev[0] - cur[0])*10))
+                        else:
+                            instr.append("L" + str((prev[0] - cur[0])*10))
+                    elif cur[2] == DOWN:
+                        if prev[0] > cur[0]:
+                            instr.append("L" + str((prev[0] - cur[0])*10))
+                        else:
+                            instr.append("R" + str((prev[0] - cur[0])*10))
+                elif prev[2] == RIGHT:
+                    if cur[2] == RIGHT:
+                        if cur[0] - prev[0] > 0:
+                            instr.append("F" + str((cur[0] - prev[0])*10))
+                        else:
+                            instr.append("B" + str((prev[0] - cur[0])*10))
+                    elif cur[2] == UP:
+                        if cur[0] > prev[0]:
+                            instr.append("L" + str((cur[0] - prev[0])*10))
+                        else:
+                            instr.append("R" + str((cur[0] - prev[0])*10))
+                    elif cur[2] == DOWN:
+                        if cur[0] > prev[0]:
+                            instr.append("R" + str((cur[0] - prev[0])*10))
+                        else:
+                            instr.append("L" + str((cur[0] - prev[0])*10))
+                path_x.append(cur[0] + 0.5)
+                path_y.append(cur[1] + 0.5)
+                # print(cur)
+                prev = cur
+                cur = (prev_grid[int(cur[0])][int(cur[1])][int(cur[2])][0], prev_grid[int(cur[0])][int(cur[1])][int(cur[2])][1], prev_grid[int(cur[0])][int(cur[1])][int(cur[2])][2])
+            # instr.append("S")
+            print(instr)
 
     ###### Uncomment below to plot path in matplotlib ######
 
@@ -347,28 +349,44 @@ for i in range(len(obstacles) - 1):
 
     # for obstacle in obstacles:
     #     ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
-    # for point in prev_path:
-    #     ax.annotate("", xy=(point[0] + math.sin(math.radians(point[2]))*2, point[1] + math.cos(math.radians(point[2]))*2), xytext=(point[0], point[1]),
-    #     arrowprops=dict(arrowstyle="->"))
-
     # plt.show()
+    return instr
 
+
+# Obstacles are stored as tuples of (x, y, orientation)
+#   - x, y are the cell in which the object is located. (0, 0) is at lower left corner
+#   - orient is the direction
+# obstacles = eval(sys.argv[1])   # Read obstacle string
+# print(obstacles)
+
+start = time.time()
+obstacles = [(4, 10, 3), (12, 3, 3), (3, 10, 0), (5, 3, 3), (3, 17, 3)] # For testing
+print("Obstacles loaded - %.3fms" % (time.time() - start))
+
+start = time.time()
+coll_grid = get_disc_collision_mask()
+edges = create_graph(coll_grid)
+print("Graph created - %.3fms" % (time.time() - start))
+
+
+start = time.time()
+instr = get_distance_graph(obstacles, coll_grid)
 print(instr)
-print("Time taken: " + str(time.time() - start) + " sec")
+print("Path generated - %.3fms" % (time.time() - start))
 
 
 # Still sorta broken
-import socket
+# import socket
 
-HOST = '192.168.28.28' # Enter IP or Hostname of your server
-PORT = 25000 # Pick an open Port (1000+ recommended), must match the server port
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST,PORT))
+# HOST = '192.168.28.28' # Enter IP or Hostname of your server
+# PORT = 25000 # Pick an open Port (1000+ recommended), must match the server port
+# s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# s.connect((HOST,PORT))
 
-#Lets loop awaiting for your input
-command = (instr[0]).encode('utf-8')
-s.send(command)
-s.close()
+# #Lets loop awaiting for your input
+# command = (instr[0]).encode('utf-8')
+# s.send(command)
+# s.close()
 
 
-print(reply)
+# print(reply)
