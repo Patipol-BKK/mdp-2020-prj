@@ -12,11 +12,12 @@ app.get('/set-obstacles/', function(req, res) {
 
   // Get obstacles and starting position
   var obstacle_str = req.query.str
-  var start_str = req.query.start
+  var init_str = req.query.init
 
   // Spawns python process for computing path with the receieved data
   const spawn = require("child_process").spawn;
-  const pythonProcess = spawn('python',["movement.py", obstacle_str, start]);
+  console.log("sending cmd => " + 'python movement.py ' + obstacle_str + ' ' + init_str);
+  const pythonProcess = spawn('python',["movement.py", obstacle_str, init_str]);
   pythonProcess.stdout.on("data", data => {
     console.log(`stdout: ${data}`);
   });
