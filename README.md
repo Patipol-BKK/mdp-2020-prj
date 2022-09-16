@@ -8,7 +8,7 @@ node app.js
 
 Inputs for obstacles and starting position can be sent to the PC through HTTP GET formatted as follows:
 ```
-127.0.0.1/set-obstacles?str=[(x1, y1, orient1),(x2,y2,orient2), ...]&&start=(x,y,orient)
+127.0.0.1/set-obstacles?str=[(x1, y1, orient1),(x2,y2,orient2), ...]&&init=(x,y,orient)
 ```
 -> can be tested by sending from any devices that are connected to the RPi wifi on a web browser
 
