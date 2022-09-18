@@ -518,7 +518,7 @@ for i in range(len(obstacles)):
 # instr_list = get_path_instructions(cost_matrix, path_matrix, len(obstacles))
 print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
-# print(instr_list)
+print(instr_list)
 
 # Simplify instructions list
 #   - to be done later
@@ -527,7 +527,7 @@ print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
 
 
-
+exit(0)
 
 # For sending data to RPi via TCP socket
 import socket
@@ -555,4 +555,12 @@ for i in range(len(instr_list)):
         print("Unexpected reply encountered, program exiting...")
         exit(0)
 
+
+import serial
+ser = serial.Serial()
+ser.baudrate = 115200
+ser.port = 'COM3'
+if not ser.open():
+    print("Error opening port!")
+    exit(0)
 
