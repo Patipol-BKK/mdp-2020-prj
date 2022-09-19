@@ -1,0 +1,8 @@
+main.c:867:6:RightMotor	0	static
+main.c:530:6:StartDefaultTask	32	static
+main.c:885:6:EncoderL	8	static
+main.c:553:6:Display	32	static
+main.c:574:6:LeftMotor	72	static
+main.c:211:6:SystemClock_Config	88	static,ignoring_inline_asm
+main.c:116:5:main	112	static,ignoring_inline_asm
+main.c:900:6:Error_Handler	0	static,ignoring_inline_asm
