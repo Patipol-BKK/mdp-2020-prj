@@ -518,13 +518,29 @@ for i in range(len(obstacles)):
 # instr_list = get_path_instructions(cost_matrix, path_matrix, len(obstacles))
 print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
-print(instr_list)
 
 # Simplify instructions list
-#   - to be done later
+temp_instr_list = [instr_list[0]]
+index = 1
+instr_len = len(instr_list)
+while index < instr_len:
+    # while the next instr is of the same type, make sure its not a Stop or Obstacle instr
+    if instr_list[index][3] != "S" and instr_list[index][3] != "O" and index < instr_len and instr_list[index][:5] == temp_instr_list[-1][:5]:
+        prev_instr = temp_instr_list.pop()
+        # add prev and current dist
+        new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
+        if new_dist < 100:
+            new_dist = "0" + str(new_dist)
+        else:
+            new_dist = str(new_dist)
+        # add new instr string
+        temp_instr_list.append(prev_instr[:5] + new_dist)
+    else:
+        temp_instr_list.append(instr_list[index])
+    index += 1
 
-
-
+instr_list = temp_instr_list
+print(instr_list)
 
 
 
