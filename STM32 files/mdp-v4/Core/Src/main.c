@@ -592,7 +592,7 @@ void LeftMotor(void *argument)
   int value;
   /* Infinite loop */
   for(;;){
-	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[2] - '0';
+	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[4] - '0';
 	  dist = value;
 	  angle = value;
 	  if(Buffer[0] == 'F'){
