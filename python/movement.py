@@ -488,6 +488,61 @@ def plot_instr(plt, instr_list, start_pos, obstacles):
         ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
     plt.show()
 
+# Simplify instructions list
+def simplify_instr(instr_list):
+    temp_instr_list = [instr_list[0]]
+    index = 1
+    instr_len = len(instr_list)
+    while index < instr_len:
+        # while the next instr is of the same type, make sure its not a Stop or Obstacle instr
+        if instr_list[index][3] != "S" and instr_list[index][3] != "O" and index < instr_len and instr_list[index][:5] == temp_instr_list[-1][:5]:
+            prev_instr = temp_instr_list.pop()
+            # add prev and current dist
+            new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
+            if new_dist < 100:
+                new_dist = "0" + str(new_dist)
+            else:
+                new_dist = str(new_dist)
+            # add new instr string
+            temp_instr_list.append(prev_instr[:5] + new_dist)
+        else:
+            temp_instr_list.append(instr_list[index])
+        index += 1
+    return temp_instr_list
+
+def optimal_path(obstacles, cost_matrix, path_matrix):
+    visited = set()
+    target = len(obstacles) + 1 # visit all obstacles, and starting point
+    min_cost = float("inf")
+    optimal_path = []
+    instr_list = []
+
+    def path_cost(obstacle, cur_cost, cur_path):
+        nonlocal min_cost
+        nonlocal optimal_path
+        visited.add(obstacle)
+
+        if len(visited) == target:
+            if cur_cost < min_cost:
+                min_cost = cur_cost
+                optimal_path = cur_path[:]        
+        else:
+            for next_obstacle in range(1, len(cost_matrix)):     # len(cost_matrix) -> n + 1
+                if obstacle != next_obstacle and next_obstacle not in visited:    # inner array: costs from current to obstacle (0-indexed), outer array: obstacle (1-indexed)
+                    cur_path.append((obstacle, next_obstacle))
+                    path_cost(next_obstacle, cur_cost + cost_matrix[obstacle][next_obstacle-1], cur_path)
+                    cur_path.pop()
+        visited.remove(obstacle)
+
+    path_cost(0, 0, [])
+    print("Optimal path: ", optimal_path, "with cost:", min_cost)
+
+    for from_obstacle, to_obstacle in optimal_path:
+        for instr in path_matrix[from_obstacle][to_obstacle-1]:
+            instr_list.append(instr)
+    
+    return instr_list
+
 
 start = time.time()
 # Obstacles are stored as tuples of (x, y, orientation)
@@ -506,43 +561,22 @@ coll_grid = get_disc_collision_mask()
 edges = create_graph(coll_grid)
 print("Graph created - %.3fsec" % (time.time() - start))
 
-
 start = time.time()
 cost_matrix, path_matrix = get_distance_graph(obstacles, coll_grid, init_pos)
 print("Obstacle visit paths generated - %.3fsec" % (time.time() - start))
 
 start = time.time()
-instr_list = []
-for i in range(len(obstacles)):
-    instr_list += path_matrix[i][i]
+
+instr_list = optimal_path(obstacles, cost_matrix, path_matrix)
+
+# for i in range(len(obstacles)):
+#     instr_list += path_matrix[i][i]
 # instr_list = get_path_instructions(cost_matrix, path_matrix, len(obstacles))
-print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
-
-# Simplify instructions list
-temp_instr_list = [instr_list[0]]
-index = 1
-instr_len = len(instr_list)
-while index < instr_len:
-    # while the next instr is of the same type, make sure its not a Stop or Obstacle instr
-    if instr_list[index][3] != "S" and instr_list[index][3] != "O" and index < instr_len and instr_list[index][:5] == temp_instr_list[-1][:5]:
-        prev_instr = temp_instr_list.pop()
-        # add prev and current dist
-        new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
-        if new_dist < 100:
-            new_dist = "0" + str(new_dist)
-        else:
-            new_dist = str(new_dist)
-        # add new instr string
-        temp_instr_list.append(prev_instr[:5] + new_dist)
-    else:
-        temp_instr_list.append(instr_list[index])
-    index += 1
-
-instr_list = temp_instr_list
+instr_list = simplify_instr(instr_list)
 print(instr_list)
 
-
+print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
 # # For sending data to RPi via TCP socket
 # import socket
