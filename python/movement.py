@@ -310,21 +310,21 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                     if cur[2] == UP:
                         if cur[1] - prev[1] > 0:
                             heading = "FW"
-                            dist = int((cur[1] - prev[1])*10)
+                            dist = int((cur[1] - prev[1])*10/1.9)
                         else:
                             heading = "BW"
-                            dist = int((prev[1] - cur[1])*10)
+                            dist = int((prev[1] - cur[1])*10/1.9)
                     elif cur[2] == LEFT:
                         if cur[1] > prev[1]:
                             heading = "FL"
                             dist = int((cur[1] - prev[1])*17.5)
                         else:
                             heading = "BR"
-                            dist = int((prev[1] - cur[1])*55)
+                            dist = int((prev[1] - cur[1])*50)
                     elif cur[2] == RIGHT:
                         if cur[1] > prev[1]:
                             heading = "FR"
-                            dist = int((cur[1] - prev[1])*55)
+                            dist = int((cur[1] - prev[1])*50)
                         else:
                             heading = "BL"
                             dist = int((prev[1] - cur[1])*17.5)
@@ -332,14 +332,14 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                     if cur[2] == DOWN:
                         if cur[1] - prev[1] > 0:
                             heading = "BW"
-                            dist = int((cur[1] - prev[1])*10)
+                            dist = int((cur[1] - prev[1])*10/1.9)
                         else:
                             heading = "FW"
-                            dist = int((prev[1] - cur[1])*10)
+                            dist = int((prev[1] - cur[1])*10/1.9)
                     elif cur[2] == LEFT:
                         if prev[1] > cur[1]:
                             heading = "FR"
-                            dist = int((prev[1] - cur[1])*55)
+                            dist = int((prev[1] - cur[1])*50)
                         else:
                             heading = "BL"
                             dist = int((cur[1] - prev[1])*17.5)
@@ -349,19 +349,19 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                             dist = int((prev[1] - cur[1])*17.5)
                         else:
                             heading = "BR"
-                            dist = int((cur[1] - prev[1])*55)
+                            dist = int((cur[1] - prev[1])*50)
                 elif prev[2] == LEFT:
                     if cur[2] == LEFT:
                         if cur[0] - prev[0] > 0:
                             heading = "BW"
-                            dist = int((cur[0] - prev[0])*10)
+                            dist = int((cur[0] - prev[0])*10/1.9)
                         else:
                             heading = "FW"
-                            dist = int((prev[0] - cur[0])*10)
+                            dist = int((prev[0] - cur[0])*10/1.9)
                     elif cur[2] == UP:
                         if prev[0] > cur[0]:
                             heading = "FR"
-                            dist = int((prev[0] - cur[0])*55)
+                            dist = int((prev[0] - cur[0])*50)
                         else:
                             heading = "BL"
                             dist = int((cur[0] - prev[0])*17.5)
@@ -371,26 +371,26 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                             dist = int((prev[0] - cur[0])*17.5)
                         else:
                             heading = "BR"
-                            dist = int((cur[0] - prev[0])*55)
+                            dist = int((cur[0] - prev[0])*50)
                 elif prev[2] == RIGHT:
                     if cur[2] == RIGHT:
                         if cur[0] - prev[0] > 0:
                             heading = "FW"
-                            dist = int((cur[0] - prev[0])*10)
+                            dist = int((cur[0] - prev[0])*10/1.9)
                         else:
                             heading = "BW"
-                            dist = int((prev[0] - cur[0])*10)
+                            dist = int((prev[0] - cur[0])*10/1.9)
                     elif cur[2] == UP:
                         if cur[0] > prev[0]:
                             heading = "FL"
                             dist = int((cur[0] - prev[0])*17.5)
                         else:
                             heading = "BR"
-                            dist = int((prev[0] - cur[0])*55)
+                            dist = int((prev[0] - cur[0])*50)
                     elif cur[2] == DOWN:
                         if cur[0] > prev[0]:
                             heading = "FR"
-                            dist = int((cur[0] - prev[0])*55)
+                            dist = int((cur[0] - prev[0])*50)
                         else:
                             heading = "BL"
                             dist = int((prev[0] - cur[0])*17.5)
@@ -412,11 +412,11 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
             ax.set_xlim([0, 20])
             ax.set_ylim([0, 20])
 
-            plt.plot(path_x, path_y)
+            # plt.plot(path_x, path_y)
 
             for obstacle in obstacles:
                 ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
-            plt.show()
+            # plt.show()
 
             path_list.append(instr)
             cost_matrix[i][j] = cost
@@ -482,7 +482,7 @@ def plot_instr(plt, instr_list, start_pos, obstacles):
     ax.set_xlim([0, 20])
     ax.set_ylim([0, 20])
 
-    plt.plot(x, y)
+    # plt.plot(x, y)
 
     for obstacle in obstacles:
         ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
@@ -575,25 +575,25 @@ instr_list = optimal_path(obstacles, cost_matrix, path_matrix)
 
 instr_list = simplify_instr(instr_list)
 print(instr_list)
-
+instr_list = ['PS|FL01035']
 print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
 # # For sending data to RPi via TCP socket
-# import socket
+import socket
 
-# HOST = '192.168.28.28' # RPi IP
-# PORT = 12345 # Port
-# s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# s.connect((HOST,PORT))
+HOST = '192.168.28.28' # RPi IP
+PORT = 12345 # Port
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST,PORT))
 
-# # Add termination function for RPi to stop recieving
-# instr_list += ['PR|STOP']
-# print(instr_list)
+# Add termination function for RPi to stop recieving
+instr_list += ['PR|STOP']
+print(instr_list)
 
-# # Loop through all the instructions to send to RPi
-# for i in range(len(instr_list)):
-#     command = (instr_list[i]+',').encode('utf-8')
-#     s.send(command)
+# Loop through all the instructions to send to RPi
+for i in range(len(instr_list)):
+    command = (instr_list[i]+',').encode('utf-8')
+    s.send(command)
 
 
     # reply = s.recv(1024).strip().decode('utf-8')
@@ -608,31 +608,102 @@ print("Final path instructions generated - %.3fsec" % (time.time() - start))
     #     exit(0)
 
 # FR110
+# x = []
+# y = []
+# cur_pos = init_pos
+# for instr in instr_list:
+#     x.append(cur_pos[0] + 0.5)
+#     y.append(cur_pos[1] + 0.5)
+#     if cur_pos[2] == UP:
+#         if instr[3:5] == 'FW':
+#             cur_pos = (cur_pos[0], cur_pos[1] + int(instr[5:8])/10, cur_pos[2])
+#         elif instr[3:5] == 'BW':
+#             cur_pos = (cur_pos[0], cur_pos[1] - int(instr[5:8])/10, cur_pos[2])
+#         elif instr[3:5] == 'FR':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] + 2, RIGHT)
+#         elif instr[3:5] == 'FL':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] + 2, LEFT)
+#         elif instr[3:5] == 'BR':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] - 2, LEFT)
+#         elif instr[3:5] == 'BL':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] - 2, RIGHT)
+#     elif cur_pos[2] == DOWN:
+#         if instr[3:5] == 'FW':
+#             cur_pos = (cur_pos[0], cur_pos[1] - int(instr[5:8])/10, cur_pos[2])
+#         elif instr[3:5] == 'BW':
+#             cur_pos = (cur_pos[0], cur_pos[1] + int(instr[5:8])/10, cur_pos[2])
+#         elif instr[3:5] == 'FR':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] - 2, LEFT)
+#         elif instr[3:5] == 'FL':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] - 2, RIGHT)
+#         elif instr[3:5] == 'BR':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] + 2, RIGHT)
+#         elif instr[3:5] == 'BL':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] + 2, LEFT)
+#     elif cur_pos[2] == LEFT:
+#         if instr[3:5] == 'FW':
+#             cur_pos = (cur_pos[0] - int(instr[5:8])/10, cur_pos[1], cur_pos[2])
+#         elif instr[3:5] == 'BW':
+#             cur_pos = (cur_pos[0] + int(instr[5:8])/10, cur_pos[1], cur_pos[2])
+#         elif instr[3:5] == 'FR':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] + 2, UP)
+#         elif instr[3:5] == 'FL':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] - 2, DOWN)
+#         elif instr[3:5] == 'BR':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] + 2, DOWN)
+#         elif instr[3:5] == 'BL':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] - 2, UP)
+#     elif cur_pos[2] == RIGHT:
+#         if instr[3:5] == 'FW':
+#             cur_pos = (cur_pos[0] + int(instr[5:8])/10, cur_pos[1], cur_pos[2])
+#         elif instr[3:5] == 'BW':
+#             cur_pos = (cur_pos[0] - int(instr[5:8])/10, cur_pos[1], cur_pos[2])
+#         elif instr[3:5] == 'FR':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] - 2, DOWN)
+#         elif instr[3:5] == 'FL':
+#             cur_pos = (cur_pos[0] + 2, cur_pos[1] + 2, UP)
+#         elif instr[3:5] == 'BR':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] - 2, UP)
+#         elif instr[3:5] == 'BL':
+#             cur_pos = (cur_pos[0] - 2, cur_pos[1] + 2, DOWN)
+#     # print(cur_pos)
+# print(x)
+# ax = plt.gca()
+# ax.set_aspect('equal', adjustable='box')
+# ax.set_xlim([0, 20])
+# ax.set_ylim([0, 20])
 
-import serial
+# plt.plot(x, y)
 
-ser = serial.Serial()
-ser.baudrate = 115200
-ser.port = 'COM10'
-print(ser.open())
-# if not ser.open():
-#     print("Error opening port!")
-#     exit(0)
+# for obstacle in obstacles:
+#     ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
 
-# f = open('instr.txt')
-# instr_list = eval(f.readline())
-# instr_list = ['PS|FL090']
-for instr in instr_list:
-    if instr[0:2] == 'PS':
-        print(instr[3:])
-        ser.write(instr[3:].encode())
-        while True:
-            bytesToRead = ser.inWaiting()
-            dat = ser.read(1).strip().decode()
-            if dat != '':   
-                print(dat)
-            if dat == 'R':
-                # exit(0)
-                break
-        # exit(0)
-print(instr_list)
+# plt.show()
+
+# import serial
+
+# ser = serial.Serial()
+# ser.baudrate = 115200
+# ser.port = 'COM10'
+# print(ser.open())
+# # if not ser.open():
+# #     print("Error opening port!")
+# #     exit(0)
+
+# # f = open('instr.txt')
+# # instr_list = eval(f.readline())
+# # instr_list = ['PS|FL0']
+# for instr in instr_list:
+#     if instr[0:2] == 'PS':
+#         print(instr[3:])
+#         ser.write(instr[3:].encode())
+#         while True:
+#             bytesToRead = ser.inWaiting()
+#             dat = ser.read(1).strip().decode()
+#             if dat != '':   
+#                 print(dat)
+#             if dat == 'R':
+#                 # exit(0)
+#                 break
+#         # exit(0)
+# print(instr_list)
