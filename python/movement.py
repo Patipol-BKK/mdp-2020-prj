@@ -317,7 +317,7 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                     elif cur[2] == LEFT:
                         if cur[1] > prev[1]:
                             heading = "FL"
-                            dist = int((cur[1] - prev[1])*17.5)
+                            dist = int((cur[1] - prev[1])*20)
                         else:
                             heading = "BR"
                             dist = int((prev[1] - cur[1])*50)
@@ -327,7 +327,7 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                             dist = int((cur[1] - prev[1])*50)
                         else:
                             heading = "BL"
-                            dist = int((prev[1] - cur[1])*17.5)
+                            dist = int((prev[1] - cur[1])*20)
                 elif prev[2] == DOWN:
                     if cur[2] == DOWN:
                         if cur[1] - prev[1] > 0:
@@ -342,11 +342,11 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                             dist = int((prev[1] - cur[1])*50)
                         else:
                             heading = "BL"
-                            dist = int((cur[1] - prev[1])*17.5)
+                            dist = int((cur[1] - prev[1])*20)
                     elif cur[2] == RIGHT:
                         if prev[1] > cur[1]:
                             heading = "FL"
-                            dist = int((prev[1] - cur[1])*17.5)
+                            dist = int((prev[1] - cur[1])*20)
                         else:
                             heading = "BR"
                             dist = int((cur[1] - prev[1])*50)
@@ -364,11 +364,11 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                             dist = int((prev[0] - cur[0])*50)
                         else:
                             heading = "BL"
-                            dist = int((cur[0] - prev[0])*17.5)
+                            dist = int((cur[0] - prev[0])*20)
                     elif cur[2] == DOWN:
                         if prev[0] > cur[0]:
                             heading = "FL"
-                            dist = int((prev[0] - cur[0])*17.5)
+                            dist = int((prev[0] - cur[0])*20)
                         else:
                             heading = "BR"
                             dist = int((cur[0] - prev[0])*50)
@@ -383,7 +383,7 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                     elif cur[2] == UP:
                         if cur[0] > prev[0]:
                             heading = "FL"
-                            dist = int((cur[0] - prev[0])*17.5)
+                            dist = int((cur[0] - prev[0])*20)
                         else:
                             heading = "BR"
                             dist = int((prev[0] - cur[0])*50)
@@ -393,7 +393,7 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                             dist = int((cur[0] - prev[0])*50)
                         else:
                             heading = "BL"
-                            dist = int((prev[0] - cur[0])*17.5)
+                            dist = int((prev[0] - cur[0])*20)
 
                 instr.append("PS|" + heading + str(dist).zfill(3))
 
@@ -575,7 +575,8 @@ instr_list = optimal_path(obstacles, cost_matrix, path_matrix)
 
 instr_list = simplify_instr(instr_list)
 print(instr_list)
-instr_list = ['PS|FL01035']
+# instr_list = ['PS|FW050','PS|BR100','PS|FW020','PS|FR100','PS|FR100','PS|FW020','PS|FR100','PS|FR100','PS|BW040','PS|FL038','PS|FW020']
+instr_list = ['PS|FW030','PS|BR090','PS|FW020','PS|FR090','PS|FW040','PS|FR090','PS|FW020','PS|FR090','PS|FW040']
 print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
 # # For sending data to RPi via TCP socket
