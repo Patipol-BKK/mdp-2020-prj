@@ -407,16 +407,16 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
 
             # print(instr)
 
-            # ax = plt.gca()
-            # ax.set_aspect('equal', adjustable='box')
-            # ax.set_xlim([0, 20])
-            # ax.set_ylim([0, 20])
+            ax = plt.gca()
+            ax.set_aspect('equal', adjustable='box')
+            ax.set_xlim([0, 20])
+            ax.set_ylim([0, 20])
 
-            # plt.plot(path_x, path_y)
+            plt.plot(path_x, path_y)
 
-            # for obstacle in obstacles:
-            #     ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
-            # plt.show()
+            for obstacle in obstacles:
+                ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
+            plt.show()
 
             path_list.append(instr)
             cost_matrix[i][j] = cost
@@ -579,56 +579,57 @@ print(instr_list)
 print("Final path instructions generated - %.3fsec" % (time.time() - start))
 
 # # For sending data to RPi via TCP socket
-# import socket
+import socket
 
-# HOST = '192.168.28.28' # RPi IP
-# PORT = 12345 # Port
-# s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# s.connect((HOST,PORT))
+HOST = '192.168.28.28' # RPi IP
+PORT = 12345 # Port
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST,PORT))
 
-# # Add termination function for RPi to stop recieving
-# instr_list += ['PR|STOP']
-# print(instr_list)
-
-# # Loop through all the instructions to send to RPi
-# for i in range(len(instr_list)):
-#     command = instr_list[i].encode('utf-8')
-#     s.send(command)
-#     reply = s.recv(1024).strip().decode('utf-8')
-#     if reply == 'OK':
-#         print(i, instr_list[i], 'sent')
-#     elif reply == 'Terminate':
-#         print("Sending complete!")
-#     else:
-#         print("Reply = " + reply)
-#         print("Unexpected reply encountered, program exiting...")
-#         exit(0)
-
-
-import serial
-
-ser = serial.Serial()
-ser.baudrate = 115200
-ser.port = 'COM10'
-print(ser.open())
-# if not ser.open():
-#     print("Error opening port!")
-#     exit(0)
-
-# f = open('instr.txt')
-# instr_list = eval(f.readline())
-
-for instr in instr_list:
-    if instr[0:2] == 'PS':
-        print(instr[3:])
-        ser.write(instr[3:].encode())
-        while True:
-            bytesToRead = ser.inWaiting()
-            dat = ser.read(1).strip().decode()
-            if dat != '':   
-                print(dat)
-            if dat == 'R':
-                # exit(0)
-                break
-        # exit(0)
+# Add termination function for RPi to stop recieving
+instr_list += ['PR|STOP']
 print(instr_list)
+
+# Loop through all the instructions to send to RPi
+for i in range(len(instr_list)):
+    command = (instr_list[i]+',').encode('utf-8')
+    s.send(command)
+    # reply = s.recv(1024).strip().decode('utf-8')
+    # print(reply)
+    # if reply == 'OK':
+    #     print(i, instr_list[i], 'sent')
+    # elif reply == 'Terminate':
+    #     print("Sending complete!")
+    # else:
+    #     print("Reply = " + reply)
+    #     print("Unexpected reply encountered, program exiting...")
+    #     exit(0)
+
+
+# import serial
+
+# ser = serial.Serial()
+# ser.baudrate = 115200
+# ser.port = 'COM10'
+# print(ser.open())
+# # if not ser.open():
+# #     print("Error opening port!")
+# #     exit(0)
+
+# # f = open('instr.txt')
+# # instr_list = eval(f.readline())
+
+# for instr in instr_list:
+#     if instr[0:2] == 'PS':
+#         print(instr[3:])
+#         ser.write(instr[3:].encode())
+#         while True:
+#             bytesToRead = ser.inWaiting()
+#             dat = ser.read(1).strip().decode()
+#             if dat != '':   
+#                 print(dat)
+#             if dat == 'R':
+#                 # exit(0)
+#                 break
+#         # exit(0)
+# print(instr_list)
