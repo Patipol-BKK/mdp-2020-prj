@@ -106,9 +106,12 @@ void EncoderL(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint16_t pwmVal = 2000, pwmVal_S = 1000*12/28, pwmVal_L = 1000;
 uint8_t Buffer[5];
 char flagL;
 char flagR;
+char flagNext;
+int flagfin;
 
 /* USER CODE END 0 */
 
@@ -129,7 +132,11 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-
+  Buffer[0] = 'F';
+  Buffer[1] = 'W';
+  Buffer[2] = '0';
+  Buffer[3] = '0';
+  Buffer[4] = '0';
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -585,9 +592,11 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
   uint8_t hello[20];
   /* Infinite loop */
+  flagfin = 0;
+  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
   for(;;)
   {
-	HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
+	  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
 	sprintf(hello, "buff:%s", Buffer);
 	OLED_ShowString(10,20,hello);
 	HAL_GPIO_TogglePin(LED3_GPIO_Port,LED3_Pin);
@@ -610,9 +619,18 @@ void Display(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	sprintf(hello, "flag %d", flagfin);
 	OLED_ShowString(10,10,hello);
 	OLED_Refresh_Gram();
     osDelay(1);
+    if(flagfin >= 2){
+//    	osDelay(300);
+		HAL_UART_Transmit(&huart3, "R", sizeof("R"), HAL_MAX_DELAY);
+//    	osDelay(300);
+
+//    	osDelay(500);
+		flagfin = 0;
+	}
   }
   /* USER CODE END Display */
 }
@@ -627,7 +645,7 @@ void Display(void *argument)
 void LeftMotor(void *argument)
 {
   /* USER CODE BEGIN LeftMotor */
-  uint16_t pwmVal = 2000, pwmVal_S = 1200, pwmVal_L = 4257;
+
   HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
@@ -640,9 +658,10 @@ void LeftMotor(void *argument)
   tick = HAL_GetTick();
 
   int value;
+  flagL = '1';
   /* Infinite loop */
   for(;;){
-	  flagL = '1';
+	  while(flagfin > 0)osDelay(1);
 	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[4] - '0';
 	  dist = value;
 	  angle = value;
@@ -660,30 +679,33 @@ void LeftMotor(void *argument)
 	  }
 	  switch(Buffer[1]){
 	  case 'L':
-		  htim1.Instance ->CCR4 = 90;
+		  htim1.Instance ->CCR4 = 91;
 		  osDelay(300);
-		  pulseneeded = angle*0.115*59;
+		  pulseneeded = angle*34*pwmVal_S/pwmVal_L;
+//		  pulseneeded = angle*0.115*59;
 		  //pulseneeded = angle*0.35*59*60/90;
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S);
 		  break;
 	  case 'R':
-		  htim1.Instance ->CCR4 = 202;
+		  htim1.Instance ->CCR4 = 240;
 		  osDelay(300);
-		  pulseneeded = angle*0.408*59;
+		  pulseneeded = angle*39.4;
+//		  pulseneeded = angle*0.408*59;
 		  //pulseneeded = angle*0.35*59*115/90;
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L);
+
 		  break;
 	  default:
 		  htim1.Instance ->CCR4 = 147;
 		  osDelay(300);
-		  pulseneeded = dist*59;
+		  pulseneeded = dist*45.4;
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal);
 		  break;
 	  }
 	  pulsetotal = 0;
 	  do{
 		  if(HAL_GetTick()-tick > 50L){
-				sprintf(hello, "pulseL:%5d\0", pulseneeded);
+				sprintf(hello, "%cpulseL:%5d\0", flagL, pulseneeded);
 				OLED_ShowString(10,30,hello);
 
 				cnt2 = __HAL_TIM_GET_COUNTER(&htim2);
@@ -717,15 +739,9 @@ void LeftMotor(void *argument)
 				tick = HAL_GetTick();
 		  }
 	  }while(pulsetotal < pulseneeded);
-	  flagL = '0';
+	  flagfin++;
 	  Buffer[0] = 'd';
 	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
-	  osDelay(300);
-	  if (flagL == '0' && flagR == '0'){
-		  HAL_UART_Transmit(&huart3, "R", sizeof("R"), HAL_MAX_DELAY);
-	  }
-
-
   }
   /* USER CODE END LeftMotor */
 }
@@ -740,7 +756,6 @@ void LeftMotor(void *argument)
 void RightMotor(void *argument)
 {
   /* USER CODE BEGIN LeftMotor */
-  uint16_t pwmVal = 2000, pwmVal_S = 1200, pwmVal_L = 4257;
   HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
@@ -752,10 +767,12 @@ void RightMotor(void *argument)
   cnt1 = __HAL_TIM_GET_COUNTER(&htim3);
   tick = HAL_GetTick();
 
+  flagR = '1';
+  flagfin = 0;
   int value;
   /* Infinite loop */
   for(;;){
-	  flagR = '1';
+	  while(flagfin > 0)osDelay(1);
 	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[4] - '0';
 	  dist = value;
 	  angle = value;
@@ -773,30 +790,32 @@ void RightMotor(void *argument)
 	  }
 	  switch(Buffer[1]){
 	  case 'L':
-		  htim1.Instance ->CCR4 = 90;
+//		  htim1.Instance ->CCR4 = 90;
 		  osDelay(300);
-		  pulseneeded = angle*0.408*59;
+		  pulseneeded = angle*34;
+//		  pulseneeded = angle*0.408*59;
 		  //pulseneeded = angle*0.35*59*60/90;
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L);
 		  break;
 	  case 'R':
-		  htim1.Instance ->CCR4 = 202;
+//		  htim1.Instance ->CCR4 = 212;
 		  osDelay(300);
-		  pulseneeded = angle*0.115*59;
+		  pulseneeded = angle*39.4*pwmVal_S/pwmVal_L;
+//		  pulseneeded = angle*0.115*59;
 		  //pulseneeded = angle*0.35*59*115/90;
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S);
 		  break;
 	  default:
-		  htim1.Instance ->CCR4 = 147;
+//		  htim1.Instance ->CCR4 = 147;
 		  osDelay(300);
-		  pulseneeded = dist*59;
+		  pulseneeded = dist*45.4;
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal);
 		  break;
 	  }
 	  pulsetotal = 0;
 	  do{
 		  if(HAL_GetTick()-tick > 50L){
-				sprintf(hello, "pulseR:%5d\0", pulseneeded);
+				sprintf(hello, "%cpulseR:%5d\0", flagR, pulseneeded);
 				OLED_ShowString(10,40,hello);
 
 				cnt2 = __HAL_TIM_GET_COUNTER(&htim3);
@@ -826,14 +845,14 @@ void RightMotor(void *argument)
 				}
 				pulsetotal = (pulsetotal + pulse)%65535;
 				//OLED_ShowString(10,40,hello);
-				cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
+				cnt1 = __HAL_TIM_GET_COUNTER(&htim3);
 				tick = HAL_GetTick();
 		  }
 	  }while(pulsetotal < pulseneeded);
-	  flagR = '0';
+	  flagfin++;
 	  Buffer[0] = 'd';
 	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
-	  osDelay(300);
+//	  osDelay(500);
 	  //HAL_UART_Transmit(&huart3, "R", sizeof("R"), HAL_MAX_DELAY);
 
   }
