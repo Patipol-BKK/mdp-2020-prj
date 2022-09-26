@@ -106,7 +106,7 @@ void EncoderL(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 2000, pwmVal_S = 1000*12/28, pwmVal_L = 1000;
+uint16_t pwmVal = 2500, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
 uint8_t Buffer[5];
 char flagL;
 char flagR;
@@ -596,7 +596,7 @@ void StartDefaultTask(void *argument)
   HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
   for(;;)
   {
-	  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
+	HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
 	sprintf(hello, "buff:%s", Buffer);
 	OLED_ShowString(10,20,hello);
 	HAL_GPIO_TogglePin(LED3_GPIO_Port,LED3_Pin);
@@ -625,7 +625,7 @@ void Display(void *argument)
     osDelay(1);
     if(flagfin >= 2){
 //    	osDelay(300);
-		HAL_UART_Transmit(&huart3, "R", sizeof("R"), HAL_MAX_DELAY);
+		HAL_UART_Transmit(&huart3,"R", sizeof("R"), HAL_MAX_DELAY);
 //    	osDelay(300);
 
 //    	osDelay(500);
@@ -657,7 +657,7 @@ void LeftMotor(void *argument)
   cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
   tick = HAL_GetTick();
 
-  int value;
+  int value, target_pwm = 0;
   flagL = '1';
   /* Infinite loop */
   for(;;){
@@ -684,7 +684,8 @@ void LeftMotor(void *argument)
 		  pulseneeded = angle*34*pwmVal_S/pwmVal_L;
 //		  pulseneeded = angle*0.115*59;
 		  //pulseneeded = angle*0.35*59*60/90;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S);
+		  target_pwm = pwmVal_S;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S);
 		  break;
 	  case 'R':
 		  htim1.Instance ->CCR4 = 240;
@@ -692,14 +693,16 @@ void LeftMotor(void *argument)
 		  pulseneeded = angle*39.4;
 //		  pulseneeded = angle*0.408*59;
 		  //pulseneeded = angle*0.35*59*115/90;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L);
+		  target_pwm = pwmVal_L;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L);
 
 		  break;
 	  default:
-		  htim1.Instance ->CCR4 = 147;
+		  htim1.Instance ->CCR4 = 148.5;
 		  osDelay(300);
-		  pulseneeded = dist*45.4;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal);
+		  pulseneeded = dist*45.4*10/6.55;
+		  target_pwm = pwmVal;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal);
 		  break;
 	  }
 	  pulsetotal = 0;
@@ -709,6 +712,12 @@ void LeftMotor(void *argument)
 				OLED_ShowString(10,30,hello);
 
 				cnt2 = __HAL_TIM_GET_COUNTER(&htim2);
+				if(pulsetotal < pulseneeded*0.1 || (pulseneeded - pulsetotal) < pulseneeded*0.3){
+					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,target_pwm*0.8);
+				}
+				else{
+					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,target_pwm);
+				}
 				if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){
 					if(cnt2<cnt1)
 					{
@@ -769,7 +778,7 @@ void RightMotor(void *argument)
 
   flagR = '1';
   flagfin = 0;
-  int value;
+  int value, target_pwm = 0;
   /* Infinite loop */
   for(;;){
 	  while(flagfin > 0)osDelay(1);
@@ -795,7 +804,8 @@ void RightMotor(void *argument)
 		  pulseneeded = angle*34;
 //		  pulseneeded = angle*0.408*59;
 		  //pulseneeded = angle*0.35*59*60/90;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L);
+		  target_pwm = pwmVal_L;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L);
 		  break;
 	  case 'R':
 //		  htim1.Instance ->CCR4 = 212;
@@ -803,13 +813,15 @@ void RightMotor(void *argument)
 		  pulseneeded = angle*39.4*pwmVal_S/pwmVal_L;
 //		  pulseneeded = angle*0.115*59;
 		  //pulseneeded = angle*0.35*59*115/90;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S);
+		  target_pwm = pwmVal_S;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S);
 		  break;
 	  default:
 //		  htim1.Instance ->CCR4 = 147;
 		  osDelay(300);
-		  pulseneeded = dist*45.4;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal);
+		  pulseneeded = dist*45.4*10/6.55;
+		  target_pwm = pwmVal;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal);
 		  break;
 	  }
 	  pulsetotal = 0;
@@ -819,6 +831,12 @@ void RightMotor(void *argument)
 				OLED_ShowString(10,40,hello);
 
 				cnt2 = __HAL_TIM_GET_COUNTER(&htim3);
+				if(pulsetotal < pulseneeded*0.1 || (pulseneeded - pulsetotal) < pulseneeded*0.3){
+					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,target_pwm*0.8);
+				}
+				else{
+					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,target_pwm);
+				}
 				if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3)){
 					if(cnt2<cnt1)
 					{

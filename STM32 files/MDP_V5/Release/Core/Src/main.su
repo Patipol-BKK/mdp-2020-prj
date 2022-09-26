@@ -1,8 +1,8 @@
 ../Core/Src/main.c:590:6:StartDefaultTask	32	static
-../Core/Src/main.c:869:6:EncoderL	8	static
+../Core/Src/main.c:887:6:EncoderL	8	static
 ../Core/Src/main.c:615:6:Display	32	static
 ../Core/Src/main.c:645:6:LeftMotor	72	static
-../Core/Src/main.c:756:6:RightMotor	72	static
+../Core/Src/main.c:765:6:RightMotor	72	static
 ../Core/Src/main.c:222:6:SystemClock_Config	88	static,ignoring_inline_asm
 ../Core/Src/main.c:122:5:main	112	static,ignoring_inline_asm
-../Core/Src/main.c:884:6:Error_Handler	0	static,ignoring_inline_asm
+../Core/Src/main.c:902:6:Error_Handler	0	static,ignoring_inline_asm
