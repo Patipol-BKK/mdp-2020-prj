@@ -106,7 +106,7 @@ void EncoderL(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 2500, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
+uint16_t pwmVal = 2500, pwmVal_S = 3000*12/28, pwmVal_L = 3000;
 uint8_t Buffer[5];
 char flagL;
 char flagR;
@@ -712,8 +712,8 @@ void LeftMotor(void *argument)
 				OLED_ShowString(10,30,hello);
 
 				cnt2 = __HAL_TIM_GET_COUNTER(&htim2);
-				if(pulsetotal < pulseneeded*0.1 || (pulseneeded - pulsetotal) < pulseneeded*0.3){
-					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,target_pwm*0.8);
+				if(pulsetotal < pulseneeded*0.2 || (pulseneeded - pulsetotal) < pulseneeded*0.2){
+					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,target_pwm*0.7);
 				}
 				else{
 					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,target_pwm);
@@ -831,8 +831,8 @@ void RightMotor(void *argument)
 				OLED_ShowString(10,40,hello);
 
 				cnt2 = __HAL_TIM_GET_COUNTER(&htim3);
-				if(pulsetotal < pulseneeded*0.1 || (pulseneeded - pulsetotal) < pulseneeded*0.3){
-					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,target_pwm*0.8);
+				if(pulsetotal < pulseneeded*0.2 || (pulseneeded - pulsetotal) < pulseneeded*0.2){
+					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,target_pwm*0.7);
 				}
 				else{
 					__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,target_pwm);
