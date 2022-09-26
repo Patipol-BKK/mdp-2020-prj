@@ -50,7 +50,9 @@ def create_graph(coll_grid):
                             if idx_x < 16:
                                 if not (coll_grid[idx_x+2][idx_y+3] or coll_grid[idx_x+3][idx_y+3] or coll_grid[idx_x+4][idx_y+3] or \
                                     coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+3][idx_y+2] or coll_grid[idx_x+4][idx_y+2] or \
-                                    coll_grid[idx_x+2][idx_y+1] or coll_grid[idx_x+3][idx_y+1] or coll_grid[idx_x+4][idx_y+1]):
+                                    coll_grid[idx_x+2][idx_y+1] or coll_grid[idx_x+3][idx_y+1] or coll_grid[idx_x+4][idx_y+1] or \
+                                    coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x][idx_y-1] or coll_grid[idx_x+1][idx_y-1] or \
+                                    coll_grid[idx_x+5][idx_y+3] or coll_grid[idx_x+5][idx_y+2] or coll_grid[idx_x+5][idx_y+1]):
                                         edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y+2][RIGHT] = 5
 
                             # Forward turn left
@@ -67,11 +69,13 @@ def create_graph(coll_grid):
                     if idx_y >= 3:
                         if not (coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x][idx_y-1] or coll_grid[idx_x+1][idx_y-1] or \
                             coll_grid[idx_x-1][idx_y-2] or coll_grid[idx_x][idx_y-2] or coll_grid[idx_x+1][idx_y-2] or \
-                            coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x][idx_y-3] or coll_grid[idx_x+1][idx_y-3]):
+                            coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x][idx_y-3] or coll_grid[idx_x+1][idx_y-3] or \
+                            coll_grid[idx_x-1][idx_y+3] or coll_grid[idx_x][idx_y+3] or coll_grid[idx_x+1][idx_y+3]):
                             # Backward turn right
                             if idx_x < 18:
-                                if not (coll_grid[idx_x+2][idx_y-1] or coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+2][idx_y-3]):
-                                    edges[idx_x][idx_y][UP][idx_x+2][idx_y-2][LEFT] = 5
+                                if not (coll_grid[idx_x+2][idx_y-1] or coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+2][idx_y-3]) or \
+                                    coll_grid[idx_x+3][idx_y-1] or coll_grid[idx_x+3][idx_y-2] or coll_grid[idx_x+3][idx_y-3]:
+                                        edges[idx_x][idx_y][UP][idx_x+2][idx_y-2][LEFT] = 5
 
                             # Backward turn left
                             if idx_x >= 2:
@@ -204,13 +208,13 @@ def create_graph(coll_grid):
 @jit(nopython=True)
 def get_stop_pos(obst):
     if obst[2] == UP:
-        return (obst[0], obst[1] + 4, DOWN)
+        return (obst[0], obst[1] + 5, DOWN)
     elif obst[2] == DOWN:
-        return (obst[0], obst[1] - 3, UP)
+        return (obst[0], obst[1] - 4, UP)
     elif obst[2] == LEFT:
-        return (obst[0] - 3, obst[1], RIGHT)
+        return (obst[0] - 4, obst[1], RIGHT)
     elif obst[2] == RIGHT:
-        return (obst[0] + 4, obst[1], LEFT)
+        return (obst[0] + 5, obst[1], LEFT)
 
 @jit(nopython=True)
 def discrete_pathfind(start_pos, end_pos, cost_grid, prev_grid):
