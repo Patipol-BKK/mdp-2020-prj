@@ -18,6 +18,7 @@ def pos_to_cell(pos):
 
 def generate_collision_data(orient, instr_list, cost):
 	init_pos = (10.5, 10.5, 0)
+	# init_pos = (0.93, 2, 0)
 
 	collided_cells = get_collided_cells(init_pos, instr_list)
 	collided_list = []
@@ -25,6 +26,7 @@ def generate_collision_data(orient, instr_list, cost):
 		for j in range(20):
 			if collided_cells[i][j]:
 				collided_list.append((i-10, j-10))
+				# collided_list.append((i, j))
 	# print(collided_list)
 
 	plot_collided_cells(collided_cells)
@@ -35,20 +37,20 @@ def generate_collision_data(orient, instr_list, cost):
 	# print(collision_dat)
 	return collision_dat
 
-# instr_list = ['PS|BW003','PS|FR050','PS|FW000','PS|BL040','PS|BW005']
-# print(generate_collision_data(UP, ['PS|FW003','PS|BR050','PS|FL040','PS|FW005'], 0))
-# plt.show()
-# exit(0)
+instr_list = ['PS|FL062','PS|BR056','PS|FL062']
+print(generate_collision_data(UP, instr_list, 0))
+plt.show()
+exit(0)
 moves_list = [(['PS|FW010'], 1), \
 			  (['PS|BW010'], 1), \
 			  (['PS|FL090'], 5), \
 			  (['PS|BL090'], 5), \
-			  (['PS|BW003','PS|FR003','PS|BW003'], 8), \
-			  (['PS|FW003','PS|BR003','PS|FW003'], 8), \
-			  (['PS|BW003','PS|FR050','PS|BL040','PS|BW005'], 12), \
-			  (['PS|FW003','PS|BR050','PS|FL040','PS|FW005'], 12), \
-			  (['PS|FL062','PS|BR056','PS|FL062'], 10), \
-			  (['PS|FR058','PS|BL064','PS|FR058'], 10)
+			  (['PS|BW003','PS|FR090','PS|BW003'], 8), \
+			  (['PS|FW003','PS|BR090','PS|FW003'], 8), \
+			  # (['PS|BW003','PS|FR050','PS|BL040','PS|BW005'], 12), \
+			  # (['PS|FW003','PS|BR050','PS|FL040','PS|FW005'], 12), \
+			  # (['PS|FL062','PS|BR056','PS|FL062'], 10), \
+			  # (['PS|FR058','PS|BL064','PS|FR058'], 10)
 			 ]
 
 collision_dat_list = []

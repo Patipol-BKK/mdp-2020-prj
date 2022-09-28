@@ -17,6 +17,11 @@ DOWN = 1
 LEFT = 2
 RIGHT = 3
 
+def point_is_collided(pos, cell_x, cell_y):
+	if pos[0] >= cell_x and pos[0] <= cell_x + 1 and pos[1] >= cell_y and pos[1] <= cell_y + 1:
+		return True
+	return False
+
 def turn_right(pos, alpha):
 	x, y, theta = pos[0], pos[1], pos[2]
 	x_turning_center = x + math.cos(math.radians(theta))*TURNING_R
@@ -46,6 +51,23 @@ def move_straight(pos, distance):
 
 	return x_new, y_new, theta
 
+def distance_to_collision(pos, obstacles):
+	cur_pos = pos
+	collided = False
+	distance = 0
+	while not collided:
+		x_front = cur_pos[0] + math.sin(math.radians(cur_pos[2]))*(LENGTH - BACK_INSET)
+		y_front = cur_pos[1] + math.cos(math.radians(cur_pos[2]))*(LENGTH - BACK_INSET)
+		for obstacle in obstacles:
+			collided = point_is_collided((x_front, y_front), obstacle[0], obstacle[1])
+			if collided:
+				break
+		if not collided:
+			cur_pos = move_straight(cur_pos, 1)
+			distance += 1
+	return distance
+
+
 def get_outer_points(pos):
 	x, y, theta = pos[0], pos[1], pos[2]
 	x_left_front = x + math.sin(math.radians(theta))*(LENGTH - BACK_INSET) - math.cos(math.radians(theta))*(WIDTH/2)
@@ -62,7 +84,7 @@ def get_outer_points(pos):
 
 	return [(x_left_front, y_left_front), (x_right_front, y_right_front), (x_right_back, y_right_back), (x_left_back, y_left_back)]
 
-def execute_instr(pos, instr):
+def execute_instr(pos, instr, obstacles):
 	x, y, theta = pos[0], pos[1], pos[2]
 	if instr[3] == 'F':
 		if instr[4] == 'W':
@@ -80,7 +102,7 @@ def execute_instr(pos, instr):
 			x_new, y_new, theta_new = turn_right(pos, -int(instr[5:8]))
 	return x_new, y_new, theta_new
 
-def plot_instr(init_pos, instr_list):
+def plot_instr(init_pos, instr_list, obstacles):
 	x = []
 	y = []
 	cur_pos = init_pos
@@ -94,16 +116,28 @@ def plot_instr(init_pos, instr_list):
 	y_car.append(outer_pos[0][1])
 	plt.plot(x_car, y_car, color='orange', alpha=0.5)
 	plt.fill(x_car, y_car, color='orange', alpha=0.2)
+
+	distances = np.zeros(10)
+
 	for idx, instr in enumerate(instr_list):
 		if instr[1] != 'S':
 			continue
-		steps = int(instr[5:8])
-		for i in range(steps):
+		if instr[3:5] == 'DM':
+			index = int(instr[5])
+			distances[index] = distance_to_collision(cur_pos, obstacles) - int(instr[6:])
+			step_instr = 'PS|FW001'
+			steps = distances[index]
+		elif instr[3:5] == 'DR':
+			step_instr = 'PS|FW001'
+			steps = distances[index]
+		else:
+			steps = int(instr[5:8])
 			step_instr = instr[:5] + '001'
-			# print(step_instr)
-			cur_pos = execute_instr(cur_pos, step_instr)
+		for i in range(int(steps)):
+			cur_pos = execute_instr(cur_pos, step_instr, obstacles)
 			x.append(cur_pos[0])
 			y.append(cur_pos[1])
+
 
 		x_car = []
 		y_car = []
@@ -154,32 +188,42 @@ def is_collided(x, y, pos):
 	collision_test_points.append(midpoint(outer_points[3], outer_points[0]))
 	collision_test_points.append(midpoint(outer_points[0], outer_points[2]))
 	for point in collision_test_points:
-		if point[0] >= x and point[0] <= x + 1 and point[1] >= y and point[1] <= y + 1:
+		if point_is_collided(point, x, y):
 			return True
 	return False
 
-def get_collided_cells(init_pos, instr_list):
+def get_collided_cells(init_pos, instr_list, obstacles, x_lim, y_lim):
 	cur_pos = init_pos
-	collided_cells = np.zeros((20, 20))
+	collided_cells = np.zeros((x_lim, y_lim))
+	distances = np.zeros(10)
 	for idx, instr in enumerate(instr_list):
 		if instr[1] != 'S':
 			continue
-		steps = int(instr[5:8])
-		for i in range(steps):
+		if instr[3:5] == 'DM':
+			index = int(instr[5])
+			distances[index] = distance_to_collision(cur_pos, obstacles) - int(instr[6:])
+			step_instr = 'PS|FW001'
+			steps = distances[index]
+		elif instr[3:5] == 'DR':
+			step_instr = 'PS|FW001'
+			steps = distances[index]
+		else:
+			steps = int(instr[5:8])
 			step_instr = instr[:5] + '001'
+		for i in range(int(steps)):
 			# print(step_instr)
-			cur_pos = execute_instr(cur_pos, step_instr)
-			for idx_x in range(20):
-				for idx_y in range(20):
+			cur_pos = execute_instr(cur_pos, step_instr, obstacles)
+			for idx_x in range(x_lim):
+				for idx_y in range(y_lim):
 					if is_collided(idx_x, idx_y, cur_pos):
 						collided_cells[idx_x][idx_y] = 1
 	print("Final coor: ", cur_pos)
 	return collided_cells
 
-def plot_collided_cells(collided_cells):
+def plot_collided_cells(collided_cells, x_lim, y_lim):
 	ax = plt.gca()
-	for idx_x in range(20):
-		for idx_y in range(20):
+	for idx_x in range(x_lim):
+		for idx_y in range(y_lim):
 			if collided_cells[idx_x][idx_y]:
 				ax.add_patch(Rectangle((idx_x, idx_y), 1, 1,color='blue',alpha=0.06))
 
