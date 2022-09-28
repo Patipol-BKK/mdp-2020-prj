@@ -7,17 +7,17 @@ ICM20948_ST_SENSOR_DATA gstGyroOffset ={0,0,0};
 HAL_StatusTypeDef ret; // to store return status
 int16_t val; // data from IMU
 
-int32_t heading = 0; // heading in degrees
+uint32_t heading = 0; // heading in degrees
 uint32_t prevTick;
-int32_t gyroPosOld = 0;
-int32_t gyroNegOld = 0;
+int32_t gyroPosOld[3];
+int32_t gyroNegOld[3];
 
 HAL_StatusTypeDef IMU_WriteOneByte(ICM20948 *dev, uint8_t reg, uint8_t data);
 HAL_StatusTypeDef IMU_ReadOneByte(ICM20948 *dev, uint8_t reg, uint8_t *data);
 HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev);
 
 int16_t gyro_offset[3] = {0};  // gyro_offset value calibrated by Gyro_calibrate()
-
+//uint32_t gyroPrev[3];
 /*
  * INITIALISATION
  */
@@ -154,8 +154,14 @@ uint8_t* IMU_Initialise(ICM20948 *dev, I2C_HandleTypeDef *i2cHandle, UART_Handle
       HAL_Delay(100);
 
       /* offset */
-      Gyro_calibrate(dev);  // calibrate the offset of the gyroscope
+//      Gyro_calibrate(dev);  // calibrate the offset of the gyroscope
+      gyroPosOld[0] = 0;
+      gyroPosOld[1] = 0;
+      gyroPosOld[2] = 0;
 
+      gyroNegOld[0] = 0;
+	  gyroNegOld[1] = 0;
+	  gyroNegOld[2] = 0;
       // everthing OK
       //strcpy((char*)buf, "Initialize OK\r\n");
       //return &buf;
@@ -265,6 +271,9 @@ HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev)  // calibrate the offset of the 
     gyro_offset[1] = gyroRaw[1]>>5;
     gyro_offset[2] = gyroRaw[2]>>5;
 
+//    for (i = 0; i < 5; i++)
+//    	gyroPrev[i] = 0;
+
 	return ret;
 }
 
@@ -335,13 +344,18 @@ void IMU_GyroResetHeading()
 	heading = 0;
 }
 
+//int32_t cmpfunc (const void * a, const void * b) {
+//   return ( *(int32_t*)a - *(int32_t*)b );
+//}
+
 uint16_t IMU_GyroReadHeading(ICM20948 *dev)
 {   // return the change in value instead of current value
-    uint8_t u8Buf[2] = {0}; // reset to zero
+    uint8_t i, u8Buf[2] = {0}; // reset to zero
     int32_t gyroRaw = {0};  // reset to zero
     uint32_t gyroPos, gyroNeg;
     uint32_t valPos, valNeg;
     uint32_t elapsedMs, tick;
+    int32_t gyroSum = 0;
 
     ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_L, &u8Buf[0]);
     ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_H, &u8Buf[1]);
@@ -354,14 +368,88 @@ uint16_t IMU_GyroReadHeading(ICM20948 *dev)
     	tick = tick - prevTick + 65355;
     }
     elapsedMs = tick - prevTick;
+    elapsedMs = 10;
     prevTick = tick;
     gyroRaw = (u8Buf[1]<<8)|u8Buf[0] -  gyro_offset[2];
     if(gyroRaw < 0x8000){
-    	gyroRaw = gyroRaw*0.01525878906*elapsedMs/10*0.25/0.411;
-    	gyroNeg = 0
-		gyroPos =
+//    	gyroRaw = gyroRaw*0.01525878906*elapsedMs/10*2.546257;
+    	gyroNeg = gyroRaw;
+		gyroPos = 0;
+
+    }
+    else{
+//    	gyroRaw = (65535 - gyroRaw)*0.01525878906*elapsedMs/10*2.546257;
+		gyroNeg = 0;
+		gyroPos = 65535 - gyroRaw;
     }
 
+//    if(gyroNegOld == 0){
+//    	if(gyroPos > gyroPosOld){
+//    		if(gyroPos - gyroPosOld > 200){
+//    	}
+//    }
+
+//    if(gyroPos == 255){
+//    	gyroPos = gyroPosOld[0];
+//    }
+
+
+
+    gyroNegOld[2] = gyroNegOld[1];
+	gyroPosOld[2] = gyroPosOld[1];
+
+	gyroNegOld[1] = gyroNegOld[0];
+	gyroPosOld[1] = gyroPosOld[0];
+
+	gyroNegOld[0] = gyroNeg;
+	gyroPosOld[0] = gyroPos;
+
+	if(gyroNegOld[1] <= gyroNegOld[0] && gyroNegOld[1] >= gyroNegOld[2])valNeg = gyroNegOld[1];
+	else if(gyroNegOld[1] <= gyroNegOld[2] && gyroNegOld[1] >= gyroNegOld[0])valNeg = gyroNegOld[1];
+
+	else if(gyroNegOld[0] <= gyroNegOld[2] && gyroNegOld[0] >= gyroNegOld[1])valNeg = gyroNegOld[0];
+	else if(gyroNegOld[0] <= gyroNegOld[2] && gyroNegOld[0] >= gyroNegOld[1])valNeg = gyroNegOld[0];
+
+	else if(gyroNegOld[2] <= gyroNegOld[0] && gyroNegOld[2] >= gyroNegOld[1])valNeg = gyroNegOld[2];
+	else valNeg = gyroNegOld[2];
+
+	if(gyroPosOld[1] <= gyroPosOld[0] && gyroPosOld[1] >= gyroPosOld[2])valPos = gyroPosOld[1];
+	else if(gyroPosOld[1] <= gyroPosOld[2] && gyroPosOld[1] >= gyroPosOld[0])valPos = gyroPosOld[1];
+
+	else if(gyroPosOld[0] <= gyroPosOld[2] && gyroPosOld[0] >= gyroPosOld[1])valPos = gyroPosOld[0];
+	else if(gyroPosOld[0] <= gyroPosOld[2] && gyroPosOld[0] >= gyroPosOld[1])valPos = gyroPosOld[0];
+
+	else if(gyroPosOld[2] <= gyroPosOld[0] && gyroPosOld[2] >= gyroPosOld[1])valPos = gyroPosOld[2];
+	else valPos = gyroPosOld[2];
+
+//	qsort(gyroNegOld, 3, sizeof(int32_t), cmpfunc);
+//	qsort(gyroPosOld, 3, sizeof(int32_t), cmpfunc);
+//
+//	valPos = gyroPosOld[1];
+//	valNeg = gyroNegOld[1];
+
+//    if(gyroNeg >= 79){
+//    	gyroNeg = gyroNeg - 79;
+//    }
+//    if(gyroPos == 65535){
+//    	gyroPos = 0;
+//    }
+//    gyroSum = gyroPos - gyroNeg + gyroPrev[0];
+//	gyroPrev[0] = gyroPos - gyroNeg;
+//	for (i = 0; i < 14; i++){
+//		gyroSum += gyroPrev[i+1];
+//		gyroPrev[i+1] = gyroPrev[i];
+//	}
+//	gyroSum = gyroSum / 16;
+//	if(gyroSum < 0){
+//		gyroPos = 0;
+//		gyroNeg = -gyroSum;
+//	}
+//	else{
+//		gyroPos = gyroSum;
+//		gyroNeg = 0;
+//	}
+//	return gyroNeg;
 //    return gyroRaw;
 
 //    if(gyroRaw >= 0x0800 && gyroRaw < 0x1000){
@@ -393,45 +481,72 @@ uint16_t IMU_GyroReadHeading(ICM20948 *dev)
 //		gyroPos = gyroRaw;
 ////		heading = heading + gyroRaw;
 //	}
-    if(gyroPos != 0){
-    	if(gyroPosOld != 0){
-    		if(gyroPos > gyroPosOld){
-    			valPos = gyroPos - gyroPosOld;
-    			valNeg = 0;
-    		}
-    		else{
-    			valPos = 0;
-    			valNeg = gyroPosOld - gyroPos;
-    		}
-    	}
-    	else{
-    		valPos = gyroPos + gyroPosOld;
-    		valNeg = 0;
-    	}
-    }
-    else{
-    	if(gyroPosOld != 0){
-    		valPos = 0;
-    		valNeg = gyroPos + gyroPosOld;
-    	}
-    	else{
-    		if(gyroNeg > gyroNegOld){
-    			valPos = 0;
-    			valNeg = gyroNeg - gyroNegOld;
-    		}
-    		else{
-    			valPos = gyroNegOld - gyroNeg;
-    			valNeg = 0;
-    		}
-    	}
-    }
-    if(valNeg > heading) heading = heading + 36000 - valNeg;
+//    if(gyroPos != 0){
+//    	if(gyroPosOld != 0){
+//    		if(gyroPos > gyroPosOld){
+//    			valPos = gyroPos - gyroPosOld;
+//    			valNeg = 0;
+//    		}
+//    		else{
+//    			valPos = 0;
+//    			valNeg = gyroPosOld - gyroPos;
+//    		}
+//    	}
+//    	else{
+//    		valPos = gyroPos + gyroPosOld;
+//    		valNeg = 0;
+//    	}
+//    }
+//    else{
+//    	if(gyroPosOld != 0){
+//    		valPos = 0;
+//    		valNeg = gyroPos + gyroPosOld;
+//    	}
+//    	else{
+//    		if(gyroNeg > gyroNegOld){
+//    			valPos = 0;
+//    			valNeg = gyroNeg - gyroNegOld;
+//    		}
+//    		else{
+//    			valPos = gyroNegOld - gyroNeg;
+//    			valNeg = 0;
+//    		}
+//    	}
+//    }
+
+	valNeg = valNeg/14;
+	valPos = valPos/14;
+//    return gyroNeg;
+    if(valNeg > heading) heading = heading + 122850 - valNeg;
     else heading = heading - valNeg + valPos;
 
-    if(heading >= 36000) heading = heading - 36000;
-//    heading %= 360;
-	return heading;
+//    if(heading < 1) heading = heading - 1 + 36000;
+//    else heading = heading - 1;
 
+    if(heading >= 122850) heading = heading - 122850;
+
+//    heading %= 360;
+	return heading*0.29304029304;
+
+}
+
+void Gyro_calibrateHeading(ICM20948 *dev)  // calibrate the offset of the gyro
+// store the offset in int16_t gyro_offset[3]
+{
+    uint8_t u8Buf[2] = {0}; // reset to zero upon entry
+    int32_t gyroRaw[3] = {0}; // reset to zero upon entry
+    int8_t i;
+
+
+    for (i=0; i< 32; i++){
+    	ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_L, &u8Buf[0]);
+    	ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_H, &u8Buf[1]);
+    	gyroRaw[2] = (u8Buf[1]<<8)|u8Buf[0] + gyroRaw[2];
+
+    	HAL_Delay(10); // wait for 10msec
+    }
+
+    gyro_offset[2] = gyroRaw[2]>>5;
 }
 
 /*

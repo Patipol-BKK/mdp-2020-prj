@@ -829,8 +829,8 @@ void LeftMotor(void *argument)
 	  prev_heading = heading_rbt;
 	  if(Buffer[0] == 'F' && Buffer[1] == 'L'){
 		  do{
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*3);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*3);
+			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
+			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
 
 			  delta_angle = prev_heading - heading_rbt;
 			  prev_heading = heading_rbt;
@@ -839,16 +839,18 @@ void LeftMotor(void *argument)
 			  sprintf(hello, "currentL%d ", angle_progress);
 			  OLED_ShowString(10,40,hello);
 			  sprintf(hello, "targetL%d ", angle);
+			  OLED_Refresh_Gram();
 			  OLED_ShowString(10,50,hello);
 			  osDelay(1);
 		  }while(angle_progress < angle);
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+
 		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
 		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
 		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
-		  heading_error = target_heading - current_heading;
-		  if(heading_error < -18000) heading_error = heading_error + 36000;
 		  do{
 			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*0.7);
 			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*0.7);
@@ -861,16 +863,51 @@ void LeftMotor(void *argument)
 			  OLED_ShowString(10,40,hello);
 			  sprintf(hello, "targetS%d ", angle);
 			  OLED_ShowString(10,50,hello);
+			  OLED_Refresh_Gram();
 			  osDelay(1);
 		  }while(angle_progress > angle);
 	  }
 	  else if(Buffer[0] == 'B' && Buffer[1] == 'L'){
-		  while(abs(current_heading - target_heading ) > 100){
-			  current_heading = heading_rbt;
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1);
-			  HAL_Delay(1);
-		  }
+		  heading_error = target_heading - current_heading;
+		  if(heading_error < -18000) heading_error = heading_error + 36000;
+		  do{
+			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
+			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
+
+			  delta_angle = heading_rbt - prev_heading;
+			  prev_heading = heading_rbt;
+			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
+			  angle_progress = angle_progress - delta_angle;
+			  sprintf(hello, "currentL%d ", angle_progress);
+			  OLED_ShowString(10,40,hello);
+			  sprintf(hello, "targetL%d ", angle);
+			  OLED_ShowString(10,50,hello);
+			  OLED_Refresh_Gram();
+			  osDelay(1);
+		  }while(angle_progress > angle);
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+
+		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+		  do{
+			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
+			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
+
+			  delta_angle = prev_heading - heading_rbt;
+			  prev_heading = heading_rbt;
+			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
+			  angle_progress = angle_progress + delta_angle;
+			  sprintf(hello, "currentL%d ", angle_progress);
+			  OLED_ShowString(10,40,hello);
+			  sprintf(hello, "targetL%d ", angle);
+			  OLED_ShowString(10,50,hello);
+			  OLED_Refresh_Gram();
+			  osDelay(1);
+		  }while(angle_progress < angle);
 //		  while(!is_right(target_heading, current_heading)){
 //			  current_heading = heading_rbt;
 //			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*0.5);
@@ -948,8 +985,8 @@ void GyroFunc(void *argument)
 
 	  char sbuf[6];
 	  uint16_t gyro_val, left, right;
-	  HAL_Delay(300);
-	  Gyro_calibrate(&imu);
+	  HAL_Delay(1000);
+//	  Gyro_calibrateHeading(&imu);
 	  while (1)
 	  {
 		  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
