@@ -2,12 +2,12 @@ import serial
 
 ser = serial.Serial()
 ser.baudrate = 115200
-ser.port = 'COM10'
+ser.port = 'COM5'
 print(ser.open())
 # if not ser.open():
 #     print("Error opening port!")
 #     exit(0)
-instr_list = ['PS|FR045']
+instr_list = ['PS|BL180']
 # f = open('instr.txt')
 # instr_list = eval(f.readline())
 
@@ -21,8 +21,8 @@ for instr in instr_list:
 #             # dat = raw_dat.strip().decode()
 # #             if dat != '':   
 #             print(raw_dat)
-            # if dat[0] == 'R':
-            #     break
+#             # if dat[0] == 'R':
+#             #     break
         # exit(0)
 print(instr_list)
 

@@ -7,4 +7,4 @@
 ../Core/Src/IMU.c:283:19:IMU_GyroRead	24	static
 ../Core/Src/IMU.c:353:8:IMU_GyroReadHeading	48	static
 ../Core/Src/IMU.c:344:6:IMU_GyroResetTick	0	static
-../Core/Src/IMU.c:524:6:Gyro_calibrateHeading	24	static
+../Core/Src/IMU.c:525:6:Gyro_calibrateHeading	32	static
