@@ -5,6 +5,6 @@
 ../Core/Src/IMU.c:199:19:IMU_AccelRead	32	static
 ../Core/Src/IMU.c:246:19:Gyro_calibrate	40	static
 ../Core/Src/IMU.c:283:19:IMU_GyroRead	24	static
-../Core/Src/IMU.c:344:6:IMU_GyroResetHeading	0	static
 ../Core/Src/IMU.c:353:8:IMU_GyroReadHeading	48	static
+../Core/Src/IMU.c:344:6:IMU_GyroResetTick	0	static
 ../Core/Src/IMU.c:524:6:Gyro_calibrateHeading	24	static

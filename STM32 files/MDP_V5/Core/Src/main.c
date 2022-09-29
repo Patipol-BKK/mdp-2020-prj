@@ -70,22 +70,15 @@ const osThreadAttr_t DisplayTask_attributes = {
 osThreadId_t Motor_LHandle;
 const osThreadAttr_t Motor_L_attributes = {
   .name = "Motor_L",
-  .stack_size = 256 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
-/* Definitions for Motor_R */
-osThreadId_t Motor_RHandle;
-const osThreadAttr_t Motor_R_attributes = {
-  .name = "Motor_R",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
-};
-/* Definitions for GyroReadTask */
-osThreadId_t GyroReadTaskHandle;
-const osThreadAttr_t GyroReadTask_attributes = {
-  .name = "GyroReadTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityAboveNormal,
+/* Definitions for GyroTask */
+osThreadId_t GyroTaskHandle;
+const osThreadAttr_t GyroTask_attributes = {
+  .name = "GyroTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* USER CODE BEGIN PV */
 
@@ -103,7 +96,6 @@ static void MX_I2C1_Init(void);
 void StartDefaultTask(void *argument);
 void Display(void *argument);
 void LeftMotor(void *argument);
-void RightMotor(void *argument);
 void GyroFunc(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -112,10 +104,11 @@ void GyroFunc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 1500, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
+uint16_t pwmVal = 1500, pwmVal_S = 2500*12/28, pwmVal_L = 2500;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
-double heading_f_rbt = 0;
+int32_t t_heading = 0;
+double current_angle = 0, current_gyro = 0;
 ICM20948 imu;
 
 PID_TypeDef TPID;
@@ -197,11 +190,8 @@ int main(void)
   /* creation of Motor_L */
   Motor_LHandle = osThreadNew(LeftMotor, NULL, &Motor_L_attributes);
 
-  /* creation of Motor_R */
-  Motor_RHandle = osThreadNew(RightMotor, NULL, &Motor_R_attributes);
-
-  /* creation of GyroReadTask */
-  GyroReadTaskHandle = osThreadNew(GyroFunc, NULL, &GyroReadTask_attributes);
+  /* creation of GyroTask */
+  GyroTaskHandle = osThreadNew(GyroFunc, NULL, &GyroTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -656,7 +646,7 @@ void StartDefaultTask(void *argument)
   HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
   for(;;)
   {
-	HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
+
 	sprintf(hello, "buff:%s", Buffer);
 	OLED_ShowString(10,20,hello);
 	HAL_GPIO_TogglePin(LED3_GPIO_Port,LED3_Pin);
@@ -709,67 +699,84 @@ void LeftMotor(void *argument)
   int32_t tick, dist, pulseneeded, pulsetotal;
   uint8_t hello[20];
 
-  int32_t current_heading = heading_rbt;
-  int32_t target_heading, start_heading, heading_error;
-  int32_t angle_progress, delta_angle, prev_heading;
 
   cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
   tick = HAL_GetTick();
   int8_t value;
 
 
-  uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);
-  HAL_Delay(1000);
-  Gyro_calibrateHeading(&imu);
+  osDelay(2500);
+  htim1.Instance ->CCR4 = 148.4;
 
-  double current_angle = 0;
+
+
   double PID_out;
   double target_angle = 90;
+  uint8_t target_is_before = 0;
 
   char sbuf[10];
-
-  PID(&TPID, &current_angle, &PID_out, &target_angle, 1, 2, 3, _PID_P_ON_E, _PID_CD_DIRECT);
-
-  PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
-  PID_SetSampleTime(&TPID, 10);
-  PID_SetOutputLimits(&TPID, -100, 100);
 
   /* Infinite loop */
   for(;;){
 	  do{
-		  osDelay(1);
+		  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
+		  osDelay(100);
 	  }while(Buffer[0] == 'd');
 	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[4] - '0';
 //	  dist = value;
 
 
-	  if(Buffer[0]=='F' && Buffer[1]=='L'){
-		  target_angle = -((double)value);
-		  current_angle = 0;
+	  if((Buffer[0]=='F' && Buffer[1]=='L')||(Buffer[0]=='B' && Buffer[1]=='R')){
+		  t_heading = t_heading - value;
+		  target_angle = (double)t_heading;
+		  target_is_before = 1;
+	  }
+	  else if ((Buffer[0]=='F' && Buffer[1]=='R')||(Buffer[0]=='B' && Buffer[1]=='L')){
+		  t_heading = t_heading + value;
+		  target_angle = t_heading;
+		  target_is_before = 0;
+	  }
+
+	  if(Buffer[1] == 'L'){
 		  htim1.Instance ->CCR4 = 91;
-		  for(;;){
-			  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+	  }
+	  else if(Buffer[1] == 'R'){
+		  htim1.Instance ->CCR4 = 240;
+	  }
+	  else{
+		  htim1.Instance ->CCR4 = 148.4;
+	  }
+	  PID(&TPID, &current_angle, &PID_out, &target_angle, 1.8, 3, 2, _PID_P_ON_E, _PID_CD_DIRECT);
+	  osDelay(400);
+	  PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
+	  PID_SetSampleTime(&TPID, 10);
+	  PID_SetOutputLimits(&TPID, -100, 100);
 
-			  taskENTER_CRITICAL();
-			  IMU_GyroReadHeading(&imu);
-			  taskEXIT_CRITICAL();
-			  current_angle = current_angle + imu.gyro[2];
-			  PID_Compute(&TPID);
+//	  sprintf(sbuf, "%d ", (int)target_angle);
+//	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+//	  sprintf(sbuf, "%d", (int)(-1.0f*(double)target_is_before)*(target_angle - current_angle));
+//	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+//	  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+	  while(2*(0.5f - (double)target_is_before)*(target_angle - current_angle)>0){
+//	  while(1){
+		  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
 
-//			  sprintf(sbuf, "%d ", (int)current_angle);
-//			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-			  sprintf(sbuf, "%d,%d", (int)PID_out,(int)current_angle);
-			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-			  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+		  PID_Compute(&TPID);
 
+
+//		  sprintf(sbuf, "%d,%d", (int)PID_out,(int)current_angle);
+//		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+//		  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+		  if(Buffer[1] == 'L')
+		  {
 			  if(PID_out < 0){
 				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
 				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
 				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out/100.0f));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out/100.0f));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out/-100.0f));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out/-100.0f));
 			  }
 			  else{
 				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
@@ -780,11 +787,35 @@ void LeftMotor(void *argument)
 				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out/100.0f));
 				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out/100.0f));
 			  }
-			  osDelayUntil(10);
+		  }
+		  else if(Buffer[1] == 'R')
+		  {
+			  if(PID_out < 0){
+				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out/-100.0f));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out/-100.0f));
+			  }
+			  else{
+				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out/100.0f));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out/100.0f));
+			  }
 		  }
 
-
+		  osDelayUntil(10);
 	  }
+
+
+
 //	  if(Buffer[0] == 'F'){
 //		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
 //		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
@@ -1019,27 +1050,9 @@ void LeftMotor(void *argument)
   /* USER CODE END LeftMotor */
 }
 
-/* USER CODE BEGIN Header_RightMotor */
-/**
-* @brief Function implementing the Motor_R thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_RightMotor */
-void RightMotor(void *argument)
-{
-  /* USER CODE BEGIN RightMotor */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END RightMotor */
-}
-
 /* USER CODE BEGIN Header_GyroFunc */
 /**
-* @brief Function implementing the GyroReadTask thread.
+* @brief Function implementing the GyroTask thread.
 * @param argument: Not used
 * @retval None
 */
@@ -1047,33 +1060,26 @@ void RightMotor(void *argument)
 void GyroFunc(void *argument)
 {
   /* USER CODE BEGIN GyroFunc */
+  uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);
+  osDelay(1000);
+  Gyro_calibrateHeading(&imu);
+  char sbuf[10];
+  /* Infinite loop */
+  for(;;)
+  {
+	  taskENTER_CRITICAL();
+	  IMU_GyroReadHeading(&imu);
+	  taskEXIT_CRITICAL();
 
+	  current_gyro = current_gyro + imu.gyro[2];
+	  current_angle = current_gyro*0.752f;		// Increase if robot turns too much
+	  sprintf(sbuf, "%7d", (int)(current_gyro*10000));
+	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 7, HAL_MAX_DELAY);
+	  sprintf(sbuf, "%5d\r\n", (int)(imu.gyro[2]*10000));
+	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 7, HAL_MAX_DELAY);
 
-
-	  char sbuf[6];
-	  uint16_t gyro_val, left, right;
-
-
-	  while (1)
-	  {
-//		  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
-//
-//		  taskENTER_CRITICAL();
-//		  heading_f_rbt = IMU_GyroReadHeading(&imu);
-//		  taskEXIT_CRITICAL();
-//		  current_angle = current_angle + imu.gyro[2];
-//		  PID_Compute(&TPID);
-//
-//		  sprintf(sbuf, "%5.2lf ", current_angle);
-//		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-//		  sprintf(sbuf, "%5.2lf ", PID_out);
-//		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-//		  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
-
-
-
-		  osDelayUntil(10);
-	  }
+      osDelayUntil(10);
+  }
   /* USER CODE END GyroFunc */
 }
 

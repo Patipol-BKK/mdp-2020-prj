@@ -439,66 +439,6 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
 def get_path_instructions(cost_matrix, path_matrix, num_obst):
     generate_permutations(num_obst)
 
-# For plotting paths (with actual arcs), still WIP
-def plot_instr(plt, instr_list, start_pos, obstacles):
-    x = []
-    y = []
-    x.append(start_pos[0])
-    y.append(start_pos[1])
-    cur_pos = start_pos
-    for instr in instr_list:
-        instr_heading = instr[3:5]
-        instr_dist = int(instr[5:8])
-        if instr_heading == 'FW':
-            if cur_pos[2] == UP:
-                cur_pos = (cur_pos[0], cur_pos[1] + instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == DOWN:
-                cur_pos = (cur_pos[0], cur_pos[1] - instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == LEFT:
-                cur_pos = (cur_pos[0] - instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == RIGHT:
-                cur_pos = (cur_pos[0] + instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-
-        elif instr_heading == 'BW':
-            if cur_pos[2] == UP:
-                cur_pos = (cur_pos[0], cur_pos[1] - instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == DOWN:
-                cur_pos = (cur_pos[0], cur_pos[1] + instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == LEFT:
-                cur_pos = (cur_pos[0] + instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == RIGHT:
-                cur_pos = (cur_pos[0] - instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-
-        elif instr_heading == 'FL':
-            if cur_pos[2] == UP:
-                turning_center = cur_pos[0] - TURNING_RAD, cur_pos[1]
-    ax = plt.gca()
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_xlim([0, 20])
-    ax.set_ylim([0, 20])
-
-    # plt.plot(x, y)
-
-    for obstacle in obstacles:
-        ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
-    # plt.show()
-
 # Simplify instructions list
 def simplify_instr(instr_list):
     temp_instr_list = [instr_list[0]]
@@ -506,16 +446,21 @@ def simplify_instr(instr_list):
     instr_len = len(instr_list)
     while index < instr_len:
         # while the next instr is of the same type, make sure its not a Stop or Obstacle instr
-        if instr_list[index][3] != "S" and instr_list[index][3] != "O" and index < instr_len and instr_list[index][:5] == temp_instr_list[-1][:5]:
+        if instr_list[index][3] != "S" and instr_list[index][3] != "O" and index < instr_len and instr_list[index][5] == temp_instr_list[-1][5]:
             prev_instr = temp_instr_list.pop()
             # add prev and current dist
-            new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
-            if new_dist < 100:
-                new_dist = "0" + str(new_dist)
+            if instr_list[index][4] == instr_list[-1][4]:
+                new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
             else:
-                new_dist = str(new_dist)
+                new_dist = int(prev_instr[5:]) - int(instr_list[index][5:])
+
+            if new_dist < 0:
+                temp_instr_list.append(instr_list[index][:5] + str(abs(new_dist)).zfill(3))
+            else:
+                
+            
             # add new instr string
-            temp_instr_list.append(prev_instr[:5] + new_dist)
+            
         else:
             temp_instr_list.append(instr_list[index])
         index += 1
