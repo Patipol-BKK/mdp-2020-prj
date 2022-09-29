@@ -718,25 +718,29 @@ void LeftMotor(void *argument)
   t_heading = current_angle;
   /* Infinite loop */
   for(;;){
+	  // Loop until next command is received
 	  do{
 		  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
 		  osDelay(100);
 	  }while(Buffer[0] == 'd');
+	  // Convert instruction value to int
 	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[4] - '0';
-//	  dist = value;
+	  dist = value;
 
-
+	  // For counter-clockwise turning
 	  if((Buffer[0]=='F' && Buffer[1]=='L')||(Buffer[0]=='B' && Buffer[1]=='R')){
-		  t_heading = t_heading - value;
+		  t_heading = t_heading - value;	// Set target heading
 		  target_angle = (double)t_heading;
 		  target_is_before = 1;
 	  }
+	  // For clockwise turning
 	  else if ((Buffer[0]=='F' && Buffer[1]=='R')||(Buffer[0]=='B' && Buffer[1]=='L')){
 		  t_heading = t_heading + value;
 		  target_angle = (double)t_heading;
 		  target_is_before = 0;
 	  }
 
+	  // Set servo values
 	  if(Buffer[1] == 'L'){
 		  htim1.Instance ->CCR4 = 91;
 	  }
@@ -746,75 +750,88 @@ void LeftMotor(void *argument)
 	  else{
 		  htim1.Instance ->CCR4 = 148.4;
 	  }
-	  PID(&TPID, &current_angle, &PID_out, &target_angle, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+	  // Wait for servo to turn
 	  osDelay(400);
-	  PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
-	  PID_SetSampleTime(&TPID, 10);
-	  PID_SetOutputLimits(&TPID, -1.0f+min_pwm_ratio, 1.0f-min_pwm_ratio);
+	  // If turning instruction
+	  if(Buffer[1] != 'W'){
+		  // Set PID Controller (constants are Kp,Ki,Kd)
+		  PID(&TPID, &current_angle, &PID_out, &target_angle, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
-//	  sprintf(sbuf, "%d ", (int)target_angle);
-//	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-//	  sprintf(sbuf, "%d", (int)(-1.0f*(double)target_is_before)*(target_angle - current_angle));
-//	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-//	  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
-	  while(2*(0.5f - (double)target_is_before)*(target_angle - current_angle)>=0){
-//	  while(1){
-		  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+		  PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
+		  PID_SetSampleTime(&TPID, 10);
+		  PID_SetOutputLimits(&TPID, -1.0f+min_pwm_ratio, 1.0f-min_pwm_ratio);
 
-		  PID_Compute(&TPID);
+	  //	  sprintf(sbuf, "%d ", (int)target_angle);
+	  //	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+	  //	  sprintf(sbuf, "%d", (int)(-1.0f*(double)target_is_before)*(target_angle - current_angle));
+	  //	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+	  //	  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+		  // Loop until robot's heading passes target heading
+		  while(2*(0.5f - (double)target_is_before)*(target_angle - current_angle)>=0){
+	  //	  while(1){
+			  // Blinking LED for checking program crashes
+			  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
 
+			  // Compute next pwm val
+			  PID_Compute(&TPID);
 
-//		  sprintf(sbuf, "%d,%d", (int)PID_out,(int)current_angle);
-//		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-//		  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
-		  if(Buffer[1] == 'L')
-		  {
-			  if(PID_out < 0){
-				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+			  // If steering left
+			  if(Buffer[1] == 'L')
+			  {
+				  // Forward
+				  if(PID_out < 0){
+					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+				  }
+				  // Backwards
+				  else{
+					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_ratio));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+				  }
 			  }
-			  else{
-				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+			  // If steering right
+			  else if(Buffer[1] == 'R')
+			  {
+				  // Backwards
+				  if(PID_out < 0){
+					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_ratio));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
+				  }
+				  // Forwards
+				  else{
+					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
+				  }
 			  }
+
+			  osDelayUntil(10);
 		  }
-		  else if(Buffer[1] == 'R')
-		  {
-			  if(PID_out < 0){
-				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
-			  }
-			  else{
-				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-
-
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_ratio));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
-			  }
-		  }
-
-		  osDelayUntil(10);
+		  // Set both motor's speed to 0
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
 	  }
-	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
-	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+
 
 
 //	  if(Buffer[0] == 'F'){
@@ -1069,12 +1086,15 @@ void GyroFunc(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	  // Read gyro value
 	  taskENTER_CRITICAL();
 	  IMU_GyroReadHeading(&imu);
 	  taskEXIT_CRITICAL();
 
+	  // Update heading values
 	  current_gyro = current_gyro + imu.gyro[2] - 0.0027;		// Manual gyro offset
 	  current_angle = current_gyro*1.0f;		// Increase if robot turns too much
+
 	  sprintf(sbuf, "%7d ", (int)(current_angle*100));
 	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
 	  sprintf(sbuf, "%7d ", (int)(imu.gyro[2]*10000));
