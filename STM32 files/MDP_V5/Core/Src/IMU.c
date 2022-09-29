@@ -17,6 +17,8 @@ HAL_StatusTypeDef IMU_ReadOneByte(ICM20948 *dev, uint8_t reg, uint8_t *data);
 HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev);
 
 int16_t gyro_offset[3] = {0};  // gyro_offset value calibrated by Gyro_calibrate()
+float gyro_offset_f = 0;
+double heading_f = 0;
 //uint32_t gyroPrev[3];
 /*
  * INITIALISATION
@@ -348,7 +350,7 @@ void IMU_GyroResetHeading()
 //   return ( *(int32_t*)a - *(int32_t*)b );
 //}
 
-uint16_t IMU_GyroReadHeading(ICM20948 *dev)
+double IMU_GyroReadHeading(ICM20948 *dev)
 {   // return the change in value instead of current value
     uint8_t i, u8Buf[2] = {0}; // reset to zero
     int32_t gyroRaw = {0};  // reset to zero
@@ -356,19 +358,10 @@ uint16_t IMU_GyroReadHeading(ICM20948 *dev)
     uint32_t valPos, valNeg;
     uint32_t elapsedMs, tick;
     int32_t gyroSum = 0;
-
     ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_L, &u8Buf[0]);
     ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_H, &u8Buf[1]);
     tick = HAL_GetTick();
-    if(prevTick == 0){
-    	prevTick = tick;
-    	return heading;
-    }
-    if(tick < prevTick){
-    	tick = tick - prevTick + 65355;
-    }
-    elapsedMs = tick - prevTick;
-    elapsedMs = 10;
+    elapsedMs = tick-prevTick;
     prevTick = tick;
     gyroRaw = (u8Buf[1]<<8)|u8Buf[0] -  gyro_offset[2];
     if(gyroRaw < 0x8000){
@@ -383,18 +376,7 @@ uint16_t IMU_GyroReadHeading(ICM20948 *dev)
 		gyroPos = 65535 - gyroRaw;
     }
 
-//    if(gyroNegOld == 0){
-//    	if(gyroPos > gyroPosOld){
-//    		if(gyroPos - gyroPosOld > 200){
-//    	}
-//    }
-
-//    if(gyroPos == 255){
-//    	gyroPos = gyroPosOld[0];
-//    }
-
-
-
+    // Median Filtering
     gyroNegOld[2] = gyroNegOld[1];
 	gyroPosOld[2] = gyroPosOld[1];
 
@@ -513,6 +495,15 @@ uint16_t IMU_GyroReadHeading(ICM20948 *dev)
 //    		}
 //    	}
 //    }
+	dev->gyro[2] = (((float)valPos - (float)valNeg)*0.06103515625f*elapsedMs/1000.0f)*0.68918573981f - gyro_offset_f;
+	heading_f = heading_f + (double)dev->gyro[2];
+	while(heading_f >= 360){
+		heading_f = heading_f - 360;
+	}
+	while(heading_f < 0){
+		heading_f = heading_f + 360;
+	}
+	return heading_f;
 
 	valNeg = valNeg/14;
 	valPos = valPos/14;
@@ -533,20 +524,17 @@ uint16_t IMU_GyroReadHeading(ICM20948 *dev)
 void Gyro_calibrateHeading(ICM20948 *dev)  // calibrate the offset of the gyro
 // store the offset in int16_t gyro_offset[3]
 {
-    uint8_t u8Buf[2] = {0}; // reset to zero upon entry
-    int32_t gyroRaw[3] = {0}; // reset to zero upon entry
+    float offset_local = 0;
     int8_t i;
 
 
     for (i=0; i< 32; i++){
-    	ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_L, &u8Buf[0]);
-    	ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_H, &u8Buf[1]);
-    	gyroRaw[2] = (u8Buf[1]<<8)|u8Buf[0] + gyroRaw[2];
-
+    	IMU_GyroReadHeading(dev);
+		offset_local = offset_local + dev->gyro[2]/32.0f;
     	HAL_Delay(10); // wait for 10msec
     }
 
-    gyro_offset[2] = gyroRaw[2]>>5;
+    gyro_offset_f = offset_local;
 }
 
 /*

@@ -25,6 +25,7 @@
 #include "oled.h"
 #include "ICM20948.h"
 #include "math.h"
+#include "pid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,7 +70,7 @@ const osThreadAttr_t DisplayTask_attributes = {
 osThreadId_t Motor_LHandle;
 const osThreadAttr_t Motor_L_attributes = {
   .name = "Motor_L",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for Motor_R */
@@ -84,7 +85,7 @@ osThreadId_t GyroReadTaskHandle;
 const osThreadAttr_t GyroReadTask_attributes = {
   .name = "GyroReadTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* USER CODE BEGIN PV */
 
@@ -111,10 +112,13 @@ void GyroFunc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 1500, pwmVal_S = 1500*12/28, pwmVal_L = 1500;
+uint16_t pwmVal = 1500, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
+double heading_f_rbt = 0;
+ICM20948 imu;
 
+PID_TypeDef TPID;
 /* USER CODE END 0 */
 
 /**
@@ -134,11 +138,12 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-  Buffer[0] = 'd';
-  Buffer[1] = 'W';
+  Buffer[0] = 'F';
+  Buffer[1] = 'L';
   Buffer[2] = '0';
-  Buffer[3] = '0';
+  Buffer[3] = '9';
   Buffer[4] = '0';
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -676,7 +681,7 @@ void Display(void *argument)
   {
 	sprintf(hello, "V5");
 	OLED_ShowString(10,10,hello);
-	sprintf(hello, "angle:%d", heading_rbt); // @suppress("Float formatting support")
+	sprintf(hello, "%d", (int)heading_f_rbt); // @suppress("Float formatting support")
 	OLED_ShowString(10,30,hello);
 	OLED_Refresh_Gram();
     osDelay(1);
@@ -701,7 +706,7 @@ void LeftMotor(void *argument)
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   int cnt1, cnt2, pulse;
-  int32_t tick, dist, angle, pulseneeded, pulsetotal;
+  int32_t tick, dist, pulseneeded, pulsetotal;
   uint8_t hello[20];
 
   int32_t current_heading = heading_rbt;
@@ -712,237 +717,300 @@ void LeftMotor(void *argument)
   tick = HAL_GetTick();
   int8_t value;
 
+
+  uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);
+  HAL_Delay(1000);
+  Gyro_calibrateHeading(&imu);
+
+  double current_angle = 0;
+  double PID_out;
+  double target_angle = 90;
+
+  char sbuf[10];
+
+  PID(&TPID, &current_angle, &PID_out, &target_angle, 1, 2, 3, _PID_P_ON_E, _PID_CD_DIRECT);
+
+  PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
+  PID_SetSampleTime(&TPID, 10);
+  PID_SetOutputLimits(&TPID, -100, 100);
+
   /* Infinite loop */
   for(;;){
+	  do{
+		  osDelay(1);
+	  }while(Buffer[0] == 'd');
 	  value = (Buffer[2] - '0')*100 + (Buffer[3] - '0')*10 + Buffer[4] - '0';
-	  dist = value;
-	  angle = value*100;
-	  if(Buffer[0] == 'F'){
-		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-	  }
-	  else if(Buffer[0] == 'B'){
-		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-	  }
-	  else{
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
-		  continue;
-	  }
-	  switch(Buffer[1]){
-	  case 'L':
+//	  dist = value;
+
+
+	  if(Buffer[0]=='F' && Buffer[1]=='L'){
+		  target_angle = -((double)value);
+		  current_angle = 0;
 		  htim1.Instance ->CCR4 = 91;
-		  HAL_Delay(500);
-//		  pulseneeded = angle*34*pwmVal_S/pwmVal_L;
-//		  pulseneeded = angle*0.115*59;
-		  //pulseneeded = angle*0.35*59*60/90;
-//		  current_heading = heading_rbt;
-//		  start_heading = current_heading;
-//		  if(Buffer[0] == 'F'){
-//			  if(current_heading < angle*100) target_heading = current_heading + 36000 - angle*100;
-//			  else target_heading = current_heading - angle*100;
-//			  angle_progress = 0;
-//		  }
-//		  else if(Buffer[0] == 'B'){
-//			  target_heading = current_heading + angle*100;
-//			  if(target_heading >= 36000) target_heading = target_heading - 36000;
-//		  }
-//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S);
-//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L);
-		  break;
-	  case 'R':
-		  htim1.Instance ->CCR4 = 240;
-		  HAL_Delay(500);
-//		  pulseneeded = angle*39.4;
-//		  pulseneeded = angle*0.408*59;
-		  //pulseneeded = angle*0.35*59*115/90;
-//		  current_heading = heading_rbt;
-//		  start_heading = current_heading;
-//		  if(Buffer[0] == 'F'){
-//			  target_heading = current_heading + angle*100;
-//			  if(target_heading >= 36000) target_heading = target_heading - 36000;
-//		  }
-//		  else if(Buffer[0] == 'B'){
-//			  if(current_heading < angle*100) target_heading = current_heading + 36000 - angle*100;
-//			  else target_heading = current_heading - angle*100;
-//		  }
-//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L);
-//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S);
-		  break;
-	  default:
-		  htim1.Instance ->CCR4 = 148.4;
-		  HAL_Delay(500);
-		  //pulseneeded = dist*68*1.03;
-		  pulseneeded = dist*45.4*10/6.55*70/66;
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal);
-		  pulsetotal = 0;
-		  do{
-			  if(HAL_GetTick()-tick > 50L){
-					sprintf(hello, "pulseL:%5d\0", pulseneeded);
-					OLED_ShowString(10,30,hello);
+		  for(;;){
+			  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
 
-					cnt2 = __HAL_TIM_GET_COUNTER(&htim2);
-					if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){
-						if(cnt2<cnt1)
-						{
-							pulse = cnt1 - cnt2;
-							//sprintf(hello, "total1:%5d\0", pulsetotal);
-						}
-						else
-						{
-							pulse = (65535 - cnt2) + cnt1;
-							//sprintf(hello, "total2:%5d\0", pulsetotal);
-						}
-					}
-					else{
-						if(cnt2>cnt1)
-						{
-							pulse = cnt2 - cnt1;
-							//sprintf(hello, "total3:%5d\0", pulsetotal);
-						}
-						else
-						{
-							pulse = (65535 - cnt1) + cnt2;
-							//sprintf(hello, "total4:%5d\0", pulsetotal);
-						}
-					}
-					pulsetotal = (pulsetotal + pulse)%65535;
-					//OLED_ShowString(10,40,hello);
-					cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
-					tick = HAL_GetTick();
+			  taskENTER_CRITICAL();
+			  IMU_GyroReadHeading(&imu);
+			  taskEXIT_CRITICAL();
+			  current_angle = current_angle + imu.gyro[2];
+			  PID_Compute(&TPID);
+
+//			  sprintf(sbuf, "%d ", (int)current_angle);
+//			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+			  sprintf(sbuf, "%d,%d", (int)PID_out,(int)current_angle);
+			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+			  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+
+			  if(PID_out < 0){
+				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out/100.0f));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out/100.0f));
 			  }
-		  }while(pulsetotal < pulseneeded);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
-		  Buffer[0] = 'd';
-		  HAL_UART_Transmit(&huart3,"R", sizeof("R"), HAL_MAX_DELAY);
-		  continue;
-	  }
-	  delta_angle = 0;
-	  angle_progress = 0;
-	  prev_heading = heading_rbt;
-	  if(Buffer[0] == 'F' && Buffer[1] == 'L'){
-		  do{
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
+			  else{
+				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
-			  delta_angle = prev_heading - heading_rbt;
-			  prev_heading = heading_rbt;
-			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
-			  angle_progress = angle_progress + delta_angle;
-			  sprintf(hello, "currentL%d ", angle_progress);
-			  OLED_ShowString(10,40,hello);
-			  sprintf(hello, "targetL%d ", angle);
-			  OLED_Refresh_Gram();
-			  OLED_ShowString(10,50,hello);
-			  osDelay(1);
-		  }while(angle_progress < angle);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
-
-		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-
-		  do{
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*0.7);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*0.7);
-
-			  delta_angle = heading_rbt - prev_heading;
-			  prev_heading = heading_rbt;
-			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
-			  angle_progress = angle_progress - delta_angle;
-			  sprintf(hello, "currentS%d ", angle_progress);
-			  OLED_ShowString(10,40,hello);
-			  sprintf(hello, "targetS%d ", angle);
-			  OLED_ShowString(10,50,hello);
-			  OLED_Refresh_Gram();
-			  osDelay(1);
-		  }while(angle_progress > angle);
-	  }
-	  else if(Buffer[0] == 'B' && Buffer[1] == 'L'){
-		  heading_error = target_heading - current_heading;
-		  if(heading_error < -18000) heading_error = heading_error + 36000;
-		  do{
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
-
-			  delta_angle = heading_rbt - prev_heading;
-			  prev_heading = heading_rbt;
-			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
-			  angle_progress = angle_progress - delta_angle;
-			  sprintf(hello, "currentL%d ", angle_progress);
-			  OLED_ShowString(10,40,hello);
-			  sprintf(hello, "targetL%d ", angle);
-			  OLED_ShowString(10,50,hello);
-			  OLED_Refresh_Gram();
-			  osDelay(1);
-		  }while(angle_progress > angle);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
-		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
-
-		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-
-		  do{
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
-
-			  delta_angle = prev_heading - heading_rbt;
-			  prev_heading = heading_rbt;
-			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
-			  angle_progress = angle_progress + delta_angle;
-			  sprintf(hello, "currentL%d ", angle_progress);
-			  OLED_ShowString(10,40,hello);
-			  sprintf(hello, "targetL%d ", angle);
-			  OLED_ShowString(10,50,hello);
-			  OLED_Refresh_Gram();
-			  osDelay(1);
-		  }while(angle_progress < angle);
-//		  while(!is_right(target_heading, current_heading)){
-//			  current_heading = heading_rbt;
-//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*0.5);
-//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*0.5);
-//			  HAL_Delay(1);
-//		  }
-	  }
-	  if(Buffer[0] == 'F' && Buffer[1] == 'R'){
-		  while(abs(current_heading - target_heading ) > 100){
-			  current_heading = heading_rbt;
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*1);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*1);
-			  HAL_Delay(1);
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out/100.0f));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out/100.0f));
+			  }
+			  osDelayUntil(10);
 		  }
-//		  while(is_right(target_heading, current_heading)){
+
+
+	  }
+//	  if(Buffer[0] == 'F'){
+//		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+//	  }
+//	  else if(Buffer[0] == 'B'){
+//		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+//	  }
+//	  else{
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+//		  continue;
+//	  }
+//	  switch(Buffer[1]){
+//	  case 'L':
+//		  htim1.Instance ->CCR4 = 91;
+//		  HAL_Delay(500);
+////		  pulseneeded = angle*34*pwmVal_S/pwmVal_L;
+////		  pulseneeded = angle*0.115*59;
+//		  //pulseneeded = angle*0.35*59*60/90;
+////		  current_heading = heading_rbt;
+////		  start_heading = current_heading;
+////		  if(Buffer[0] == 'F'){
+////			  if(current_heading < angle*100) target_heading = current_heading + 36000 - angle*100;
+////			  else target_heading = current_heading - angle*100;
+////			  angle_progress = 0;
+////		  }
+////		  else if(Buffer[0] == 'B'){
+////			  target_heading = current_heading + angle*100;
+////			  if(target_heading >= 36000) target_heading = target_heading - 36000;
+////		  }
+////		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S);
+////		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L);
+//		  break;
+//	  case 'R':
+//		  htim1.Instance ->CCR4 = 240;
+//		  HAL_Delay(500);
+////		  pulseneeded = angle*39.4;
+////		  pulseneeded = angle*0.408*59;
+//		  //pulseneeded = angle*0.35*59*115/90;
+////		  current_heading = heading_rbt;
+////		  start_heading = current_heading;
+////		  if(Buffer[0] == 'F'){
+////			  target_heading = current_heading + angle*100;
+////			  if(target_heading >= 36000) target_heading = target_heading - 36000;
+////		  }
+////		  else if(Buffer[0] == 'B'){
+////			  if(current_heading < angle*100) target_heading = current_heading + 36000 - angle*100;
+////			  else target_heading = current_heading - angle*100;
+////		  }
+////		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L);
+////		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S);
+//		  break;
+//	  default:
+//		  htim1.Instance ->CCR4 = 148.4;
+//		  HAL_Delay(500);
+//		  //pulseneeded = dist*68*1.03;
+//		  pulseneeded = dist*45.4*10/6.55*70/66;
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal);
+//		  pulsetotal = 0;
+//		  do{
+//			  if(HAL_GetTick()-tick > 50L){
+//					sprintf(hello, "pulseL:%5d\0", pulseneeded);
+//					OLED_ShowString(10,30,hello);
+//
+//					cnt2 = __HAL_TIM_GET_COUNTER(&htim2);
+//					if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){
+//						if(cnt2<cnt1)
+//						{
+//							pulse = cnt1 - cnt2;
+//							//sprintf(hello, "total1:%5d\0", pulsetotal);
+//						}
+//						else
+//						{
+//							pulse = (65535 - cnt2) + cnt1;
+//							//sprintf(hello, "total2:%5d\0", pulsetotal);
+//						}
+//					}
+//					else{
+//						if(cnt2>cnt1)
+//						{
+//							pulse = cnt2 - cnt1;
+//							//sprintf(hello, "total3:%5d\0", pulsetotal);
+//						}
+//						else
+//						{
+//							pulse = (65535 - cnt1) + cnt2;
+//							//sprintf(hello, "total4:%5d\0", pulsetotal);
+//						}
+//					}
+//					pulsetotal = (pulsetotal + pulse)%65535;
+//					//OLED_ShowString(10,40,hello);
+//					cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
+//					tick = HAL_GetTick();
+//			  }
+//		  }while(pulsetotal < pulseneeded);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+//		  Buffer[0] = 'd';
+//		  HAL_UART_Transmit(&huart3,"R", sizeof("R"), HAL_MAX_DELAY);
+//		  continue;
+//	  }
+//	  delta_angle = 0;
+//	  angle_progress = 0;
+//	  prev_heading = heading_rbt;
+//	  if(Buffer[0] == 'F' && Buffer[1] == 'L'){
+//		  do{
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
+//
+//			  delta_angle = prev_heading - heading_rbt;
+//			  prev_heading = heading_rbt;
+//			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
+//			  angle_progress = angle_progress + delta_angle;
+//			  sprintf(hello, "currentL%d ", angle_progress);
+//			  OLED_ShowString(10,40,hello);
+//			  sprintf(hello, "targetL%d ", angle);
+//			  OLED_Refresh_Gram();
+//			  OLED_ShowString(10,50,hello);
+//			  osDelay(1);
+//		  }while(angle_progress < angle);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+//
+//		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+//
+//		  do{
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*0.7);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*0.7);
+//
+//			  delta_angle = heading_rbt - prev_heading;
+//			  prev_heading = heading_rbt;
+//			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
+//			  angle_progress = angle_progress - delta_angle;
+//			  sprintf(hello, "currentS%d ", angle_progress);
+//			  OLED_ShowString(10,40,hello);
+//			  sprintf(hello, "targetS%d ", angle);
+//			  OLED_ShowString(10,50,hello);
+//			  OLED_Refresh_Gram();
+//			  osDelay(1);
+//		  }while(angle_progress > angle);
+//	  }
+//	  else if(Buffer[0] == 'B' && Buffer[1] == 'L'){
+//		  heading_error = target_heading - current_heading;
+//		  if(heading_error < -18000) heading_error = heading_error + 36000;
+//		  do{
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
+//
+//			  delta_angle = heading_rbt - prev_heading;
+//			  prev_heading = heading_rbt;
+//			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
+//			  angle_progress = angle_progress - delta_angle;
+//			  sprintf(hello, "currentL%d ", angle_progress);
+//			  OLED_ShowString(10,40,hello);
+//			  sprintf(hello, "targetL%d ", angle);
+//			  OLED_ShowString(10,50,hello);
+//			  OLED_Refresh_Gram();
+//			  osDelay(1);
+//		  }while(angle_progress > angle);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+//		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+//
+//		  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+//		  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+//
+//		  do{
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*1.2);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*1.2);
+//
+//			  delta_angle = prev_heading - heading_rbt;
+//			  prev_heading = heading_rbt;
+//			  if(delta_angle < -18000) delta_angle = delta_angle + 36000;
+//			  angle_progress = angle_progress + delta_angle;
+//			  sprintf(hello, "currentL%d ", angle_progress);
+//			  OLED_ShowString(10,40,hello);
+//			  sprintf(hello, "targetL%d ", angle);
+//			  OLED_ShowString(10,50,hello);
+//			  OLED_Refresh_Gram();
+//			  osDelay(1);
+//		  }while(angle_progress < angle);
+////		  while(!is_right(target_heading, current_heading)){
+////			  current_heading = heading_rbt;
+////			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_S*0.5);
+////			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_L*0.5);
+////			  HAL_Delay(1);
+////		  }
+//	  }
+//	  if(Buffer[0] == 'F' && Buffer[1] == 'R'){
+//		  while(abs(current_heading - target_heading ) > 100){
 //			  current_heading = heading_rbt;
-//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*0.5);
-//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*0.5);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*1);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*1);
 //			  HAL_Delay(1);
 //		  }
-	  }
-	  else if(Buffer[0] == 'B' && Buffer[1] == 'R'){
-		  while(abs(current_heading - target_heading ) > 100){
-			  current_heading = heading_rbt;
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*1);
-			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*1);
-			  HAL_Delay(1);
-		  }
-//		  while(!is_right(target_heading, current_heading)){
+////		  while(is_right(target_heading, current_heading)){
+////			  current_heading = heading_rbt;
+////			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*0.5);
+////			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*0.5);
+////			  HAL_Delay(1);
+////		  }
+//	  }
+//	  else if(Buffer[0] == 'B' && Buffer[1] == 'R'){
+//		  while(abs(current_heading - target_heading ) > 100){
 //			  current_heading = heading_rbt;
-//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*0.5);
-//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*0.5);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*1);
+//			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*1);
 //			  HAL_Delay(1);
 //		  }
-	  }
+////		  while(!is_right(target_heading, current_heading)){
+////			  current_heading = heading_rbt;
+////			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmVal_S*0.5);
+////			  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmVal_L*0.5);
+////			  HAL_Delay(1);
+////		  }
+//	  }
 	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
 	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
 	  Buffer[0] = 'd';
@@ -979,25 +1047,31 @@ void RightMotor(void *argument)
 void GyroFunc(void *argument)
 {
   /* USER CODE BEGIN GyroFunc */
-	  ICM20948 imu;
 
-	  uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);
+
 
 	  char sbuf[6];
 	  uint16_t gyro_val, left, right;
-	  HAL_Delay(1000);
-//	  Gyro_calibrateHeading(&imu);
+
+
 	  while (1)
 	  {
-		  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+//		  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+//
+//		  taskENTER_CRITICAL();
+//		  heading_f_rbt = IMU_GyroReadHeading(&imu);
+//		  taskEXIT_CRITICAL();
+//		  current_angle = current_angle + imu.gyro[2];
+//		  PID_Compute(&TPID);
+//
+//		  sprintf(sbuf, "%5.2lf ", current_angle);
+//		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+//		  sprintf(sbuf, "%5.2lf ", PID_out);
+//		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
+//		  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
 
-		  taskENTER_CRITICAL();
-		  heading_rbt = IMU_GyroReadHeading(&imu);
-		  taskEXIT_CRITICAL();
 
-		  sprintf(sbuf, "%u ", heading_rbt);
-		  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
-		  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+
 		  osDelayUntil(10);
 	  }
   /* USER CODE END GyroFunc */

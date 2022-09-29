@@ -192,7 +192,7 @@ uint8_t* IMU_Initialise(ICM20948 *dev, I2C_HandleTypeDef *i2cHandle, UART_Handle
 HAL_StatusTypeDef IMU_AccelRead(ICM20948 *dev);
 HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev);
 HAL_StatusTypeDef IMU_GyroRead(ICM20948 *dev);
-uint16_t IMU_GyroReadTest(ICM20948 *dev);
+double IMU_GyroReadHeading(ICM20948 *dev);
 
 //u8 MPU_Get_Gyroscope(void);
 extern  int16_t TestmagnBuff[9];
