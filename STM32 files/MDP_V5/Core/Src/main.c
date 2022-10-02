@@ -26,6 +26,7 @@
 #include "ICM20948.h"
 #include "math.h"
 #include "pid.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -643,17 +644,6 @@ uint8_t is_right(int32_t head1, int32_t head2)
 	else if(head2 < head1 && head2 + 36000 - head1 < 18000)return 1;
 	return 0;
 }
-int32_t get_heading_error(int32_t head1, int32_t head2, uint8_t is_counterclock)
-{
-	if(is_counterclock){
-		if(head1 < head2){
-			return head2 - head1;
-		}
-		else{
-
-		}
-	}
-}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -719,9 +709,6 @@ void LeftMotor(void *argument)
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
 
 
-  int cnt1, cnt2, pulse;
-  int32_t tick, dist;
-  double pulseneeded, pulsetotal;
   uint8_t hello[20];
 
 
@@ -740,9 +727,8 @@ void LeftMotor(void *argument)
   double target_angle = 90;
   uint8_t target_is_before = 0;
 
-  double left_pwm, right_pwm;
+  double left_pwm = 0, right_pwm = 0;
   double PID_dist;
-  double target_pulse, current_pulse;
 
   double target_dist = 0;
 
@@ -760,7 +746,7 @@ void LeftMotor(void *argument)
 //	  dist = value;
 
 	  // For counter-clockwise turning
-	  if((Buffer[0]=='F	' && Buffer[1]=='L')||(Buffer[0]=='B' && Buffer[1]=='R')){
+	  if((Buffer[0]=='F' && Buffer[1]=='L')||(Buffer[0]=='B' && Buffer[1]=='R')){
 		  t_heading = t_heading - value;	// Set target heading
 		  target_angle = (double)t_heading;
 		  target_is_before = 1;
@@ -787,7 +773,7 @@ void LeftMotor(void *argument)
 	  }
 	  // Wait for servo to turn
 	  osDelay(400);
-	  // If turning instruction
+	  // If currently running turning instruction
 	  if(Buffer[1] != 'W'){
 		  // Set PID Controller (constants are Kp,Ki,Kd)
 		  PID(&Turning_PID, &current_angle, &PID_out, &target_angle, 0.021, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
@@ -796,6 +782,7 @@ void LeftMotor(void *argument)
 		  PID_SetSampleTime(&Turning_PID, 10);
 		  PID_SetOutputLimits(&Turning_PID, -1.0f+min_pwm_ratio, 1.0f-min_pwm_ratio);
 
+		  // For debugging
 	  //	  sprintf(sbuf, "%d ", (int)target_angle);
 	  //	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, sizeof(sbuf), HAL_MAX_DELAY);
 	  //	  sprintf(sbuf, "%d", (int)(-1.0f*(double)target_is_before)*(target_angle - current_angle));
@@ -810,8 +797,8 @@ void LeftMotor(void *argument)
 			  // Compute next pwm val
 			  PID_Compute(&Turning_PID);
 
-			  // If steering left
 			  taskENTER_CRITICAL();
+			  // If steering left
 			  if(Buffer[1] == 'L')
 			  {
 				  // Forward
@@ -821,6 +808,7 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
+					  // Set motor speed to minimum power +/- PID output
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
 				  }
@@ -831,6 +819,7 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
+					  // Set motor speed to minimum power +/- PID output
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_ratio));
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_ratio));
 				  }
@@ -845,6 +834,7 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
+					  // Set motor speed to minimum power +/- PID output
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
 				  }
@@ -855,13 +845,14 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-
+					  // Set motor speed to minimum power +/- PID output
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_ratio));
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
 				  }
 			  }
 			  taskEXIT_CRITICAL();
 
+			  // Loops every 10ms
 			  osDelayUntil(pdMS_TO_TICKS(10));
 		  }
 		  // Set both motor's speed to 0
@@ -870,7 +861,9 @@ void LeftMotor(void *argument)
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
 		  taskEXIT_CRITICAL();
 	  }
+	  // If currently running straight line instruction
 	  else{
+		  // Reset traveled distance to 0
 		  travel_dist = 0;
 		  encoder_position = 0;
 		  if(Buffer[0] == 'F'){
@@ -890,7 +883,6 @@ void LeftMotor(void *argument)
 			  target_dist = -(double)value;
 		  }
 		  // Set straight distance PID controller (constants are Kp,Ki,Kd)
-		  // CONSTANTS NEED TO BE TUNED
 		  PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
 		  PID_SetMode(&Straight_PID, _PID_MODE_AUTOMATIC);
@@ -898,26 +890,32 @@ void LeftMotor(void *argument)
 		  PID_SetOutputLimits(&Straight_PID, -1.0f+min_pwm_ratio, 1.0f-min_pwm_ratio);
 
 		  // Set straight line error correction PID controller (constants are Kp,Ki,Kd)
-		  // CONSTANTS NEED TO BE TUNED
 		  PID(&StraightErr_PID, &current_angle, &PID_out, &target_angle, 0.05, 0.02, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
 		  PID_SetMode(&StraightErr_PID, _PID_MODE_AUTOMATIC);
 		  PID_SetSampleTime(&StraightErr_PID, 10);
 		  PID_SetOutputLimits(&StraightErr_PID, -max_pwm_dif, max_pwm_dif);
+
+		  // Start motor speed to 0
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)0);
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)0);
 
+		  // Loop until traveled distance exceeds target distance (target_is_before is to account for backward movements)
 		  while((2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)>0)){
+
+			  // For Debugging
 //			  sprintf(sbuf, "%7d ", (int)current_pulse);
 //			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
 //			  sprintf(sbuf, "%7d", (int)target_pulse);
 //			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
 //			  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+
+			  // Comput PID values
 			  PID_Compute(&Straight_PID);
 			  PID_Compute(&StraightErr_PID);
 			  if(Buffer[0] == 'F')
 			  {
-				  // Left error
+				  // Change pwm ratio for both motors to correct if heading deviates from straight line
 				  left_pwm = (double)pwmVal*(1+PID_out);
 				  right_pwm = (double)pwmVal*(1-PID_out);
 //				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1+PID_out));
@@ -925,7 +923,7 @@ void LeftMotor(void *argument)
 			  }
 			  else if(Buffer[0] == 'B')
 			  {
-
+				  // Change pwm ratio for both motors to correct if heading deviates from straight line
 				  left_pwm = (double)pwmVal*(1-PID_out);
 				  right_pwm = (double)pwmVal*(1+PID_out);
 //				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1-PID_out));
@@ -1183,10 +1181,10 @@ void LeftMotor(void *argument)
 ////			  HAL_Delay(1);
 ////		  }
 //	  }
-	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
+	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);		// Sets both wheel to 0 speed
 	  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
-	  Buffer[0] = 'd';
-	  HAL_UART_Transmit(&huart3,"R", sizeof("R"), HAL_MAX_DELAY);
+	  Buffer[0] = 'd';		// Sets start of instruction buffer to invalid command so the stm doesn't repeat itself
+	  HAL_UART_Transmit(&huart3,"R", sizeof("R"), HAL_MAX_DELAY);	// Sends ready signal to RPi
   }
   /* USER CODE END LeftMotor */
 }
@@ -1201,28 +1199,15 @@ void LeftMotor(void *argument)
 void GyroFunc(void *argument)
 {
   /* USER CODE BEGIN GyroFunc */
-  uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);
-  double gyro_offset = 0, offset_local = 0;;
+  uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);	// Initialize gyro
+
+  // Calibrate gyroscope
   taskENTER_CRITICAL();
   osDelay(2000);
-//
-//  int8_t i;
-//  for (i=0; i< 10; i++){
-//	IMU_GyroReadHeading(&imu);
-//	osDelayUntil(pdMS_TO_TICKS(10)); // wait for 10msec
-//  }
-//
-//  for (i=0; i< 64; i++){
-//	IMU_GyroReadHeading(&imu);
-//	offset_local = offset_local + (double)imu.gyro[2]/64.0;
-//	osDelayUntil(pdMS_TO_TICKS(10)); // wait for 10msec
-//  }
-//
-//  gyro_offset = offset_local;
-  Gyro_calibrateHeading(&imu, pdMS_TO_TICKS(21));
+  Gyro_calibrateHeading(&imu, pdMS_TO_TICKS(21));	// Sample gyro data every 21ms for 1024 samples and use as offset
   osDelay(2000);
   taskEXIT_CRITICAL();
-  is_calibrated = 1;
+  is_calibrated = 1;	// Set finish calibration flag to start running other task
   char sbuf[10];
 
   int32_t encoder_prev = -1, encoder_cur = -1, dif = 0;
@@ -1241,7 +1226,7 @@ void GyroFunc(void *argument)
 	  current_gyro = current_gyro + imu.gyro[2];		// Manual gyro offset
 	  current_angle = current_gyro*1.0f;		// Increase if robot turns too much
 
-
+	  // Check if it's the first time running
 	  if(encoder_prev == -1 || encoder_cur == -1){
 		  encoder_cur = __HAL_TIM_GET_COUNTER(&htim2);
 		  encoder_prev = encoder_cur;
@@ -1249,6 +1234,7 @@ void GyroFunc(void *argument)
 	  else{
 		  encoder_prev = encoder_cur;
 		  encoder_cur = __HAL_TIM_GET_COUNTER(&htim2);
+		  // Deal with the encoder value wrapping around at 65535
 		  if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){
 			  if(encoder_cur <= encoder_prev){
 				  dif = encoder_prev - encoder_cur;
@@ -1267,10 +1253,11 @@ void GyroFunc(void *argument)
 		  }
 		  encoder_position = encoder_position + dif;
 	  }
-	  travel_dist = (double)encoder_position * 0.01310615989;
-	  sprintf(dispBuff, "%5d", (int)current_angle*1000);
+	  travel_dist = (double)encoder_position * 0.01310615989;		// Edit constant to calibrate straight line distance
+	  sprintf(dispBuff, "%5d", (int)current_angle*1000);	// Prints current heading angle (x1000)
 	  OLED_ShowString(10,30,dispBuff);
 
+	  // For debugging
 //  	  sprintf(sbuf, "%7d ", (int)(encoder_position));
 //  	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
 //  	  sprintf(sbuf, "%7d ", (int)(encoder_cur));
