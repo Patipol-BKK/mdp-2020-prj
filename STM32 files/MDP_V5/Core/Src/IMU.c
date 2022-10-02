@@ -8,7 +8,7 @@ HAL_StatusTypeDef ret; // to store return status
 int16_t val; // data from IMU
 
 uint32_t heading = 0; // heading in degrees
-uint32_t prevTick;
+uint32_t prevTick = 0;
 int32_t gyroPosOld[3];
 int32_t gyroNegOld[3];
 
@@ -17,7 +17,7 @@ HAL_StatusTypeDef IMU_ReadOneByte(ICM20948 *dev, uint8_t reg, uint8_t *data);
 HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev);
 
 int16_t gyro_offset[3] = {0};  // gyro_offset value calibrated by Gyro_calibrate()
-double gyro_offset_f = 0;
+int32_t gyro_offset_f = 0;
 double heading_f = 0;
 //uint32_t gyroPrev[3];
 /*
@@ -350,7 +350,7 @@ void IMU_GyroResetTick(ICM20948 *dev)
 //   return ( *(int32_t*)a - *(int32_t*)b );
 //}
 
-double IMU_GyroReadHeading(ICM20948 *dev)
+int32_t IMU_GyroReadHeading(ICM20948 *dev)
 {   // return the change in value instead of current value
     uint8_t i, u8Buf[2] = {0}; // reset to zero
     int32_t gyroRaw = {0};  // reset to zero
@@ -360,6 +360,10 @@ double IMU_GyroReadHeading(ICM20948 *dev)
     int32_t gyroSum = 0;
     ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_L, &u8Buf[0]);
     ret=IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_H, &u8Buf[1]);
+    if (prevTick == 0){
+    	prevTick = xTaskGetTickCount();
+    	return 0;
+    }
     tick = xTaskGetTickCount();
     elapsedMs = tick-prevTick;
     prevTick = tick;
@@ -496,49 +500,49 @@ double IMU_GyroReadHeading(ICM20948 *dev)
 //    		}
 //    	}
 //    }
-	dev->gyro[2] = (((double)valPos - (double)valNeg)*0.01525878906f*elapsedMs/1000) - gyro_offset_f;
-	heading_f = heading_f + (double)dev->gyro[2];
-	while(heading_f >= 360){
-		heading_f = heading_f - 360;
-	}
-	while(heading_f < 0){
-		heading_f = heading_f + 360;
-	}
-	return heading_f;
+	dev->gyro[2] = ((double)((int32_t)valPos - (int32_t)valNeg - (int32_t)gyro_offset_f)*0.01525878906f*elapsedMs/1000);
+//	heading_f = heading_f + (double)dev->gyro[2];
+//	while(heading_f >= 360){
+//		heading_f = heading_f - 360;
+//	}
+//	while(heading_f < 0){
+//		heading_f = heading_f + 360;
+//	}
+	return (int32_t)valPos - (int32_t)valNeg;
 
-	valNeg = valNeg/14;
-	valPos = valPos/14;
-//    return gyroNeg;
-    if(valNeg > heading) heading = heading + 122850 - valNeg;
-    else heading = heading - valNeg + valPos;
-
-//    if(heading < 1) heading = heading - 1 + 36000;
-//    else heading = heading - 1;
-
-    if(heading >= 122850) heading = heading - 122850;
-
-//    heading %= 360;
-	return heading*0.29304029304;
+//	valNeg = valNeg/14;
+//	valPos = valPos/14;
+////    return gyroNeg;
+//    if(valNeg > heading) heading = heading + 122850 - valNeg;
+//    else heading = heading - valNeg + valPos;
+//
+////    if(heading < 1) heading = heading - 1 + 36000;
+////    else heading = heading - 1;
+//
+//    if(heading >= 122850) heading = heading - 122850;
+//
+////    heading %= 360;
+//	return heading*0.29304029304;
 
 }
 
-void Gyro_calibrateHeading(ICM20948 *dev)  // calibrate the offset of the gyro
+void Gyro_calibrateHeading(ICM20948 *dev, double ticks)  // calibrate the offset of the gyro
 // store the offset in int16_t gyro_offset[3]
 {
-    double offset_local = 0;
-    int8_t i;
-    for (i=0; i< 10; i++){
+    int32_t offset_local = 0;
+    int16_t i;
+    for (i=0; i< 512; i++){
 		IMU_GyroReadHeading(dev);
-		osDelayUntil(10); // wait for 10msec
+		osDelayUntil(ticks); // wait for 10msec
 	}
 
-    for (i=0; i< 64; i++){
-    	IMU_GyroReadHeading(dev);
-		offset_local = offset_local + (double)dev->gyro[2]/64.0;
-    	osDelayUntil(13); // wait for 10msec
+    for (i=0; i< 1024; i++){
+    	offset_local = offset_local + IMU_GyroReadHeading(dev);
+//		offset_local = offset_local + (double)dev->gyro[2]/64.0;
+    	osDelayUntil(ticks); // wait for 10msec
     }
 
-    gyro_offset_f = offset_local;
+    gyro_offset_f = offset_local>>10;
 }
 
 /*

@@ -51,34 +51,35 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for DisplayTask */
 osThreadId_t DisplayTaskHandle;
 const osThreadAttr_t DisplayTask_attributes = {
   .name = "DisplayTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for Motor_L */
 osThreadId_t Motor_LHandle;
 const osThreadAttr_t Motor_L_attributes = {
   .name = "Motor_L",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GyroTask */
 osThreadId_t GyroTaskHandle;
 const osThreadAttr_t GyroTask_attributes = {
   .name = "GyroTask",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* USER CODE BEGIN PV */
 
@@ -87,6 +88,7 @@ const osThreadAttr_t GyroTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
@@ -104,12 +106,17 @@ void GyroFunc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 4000, pwmVal_S = 3500*12/28, pwmVal_L = 3500;
-double min_pwm_ratio = 0.15, max_pwm_dif = 0.5;
+uint16_t pwmVal = 3000, pwmVal_S = 2500*12/28, pwmVal_L = 2500;
+double min_pwm_ratio = 0.3, max_pwm_dif = 0.5;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
 int32_t t_heading = 0;
 double current_angle = 0, current_gyro = 0;
+
+uint8_t is_calibrated = 0;
+
+double travel_dist = 0;
+int32_t encoder_position = 0;
 ICM20948 imu;
 
 PID_TypeDef Turning_PID, Straight_PID, StraightErr_PID;
@@ -132,7 +139,7 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-  Buffer[0] = 'F';
+  Buffer[0] = 'd';
   Buffer[1] = 'W';
   Buffer[2] = '0';
   Buffer[3] = '9';
@@ -149,6 +156,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM8_Init();
   MX_TIM2_Init();
   MX_TIM1_Init();
@@ -573,6 +581,22 @@ static void MX_USART3_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -644,7 +668,7 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
   uint8_t hello[20];
   /* Infinite loop */
-  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
+//  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
   for(;;)
   {
 
@@ -693,7 +717,7 @@ void LeftMotor(void *argument)
   HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
-  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+
 
   int cnt1, cnt2, pulse;
   int32_t tick, dist;
@@ -705,7 +729,9 @@ void LeftMotor(void *argument)
   int16_t value;
 
 
-  osDelay(5500);
+  while(!is_calibrated){
+	  osDelay(100);
+  }
   htim1.Instance ->CCR4 = 148.4;
 
 
@@ -718,13 +744,15 @@ void LeftMotor(void *argument)
   double PID_dist;
   double target_pulse, current_pulse;
 
+  double target_dist = 0;
+
   char sbuf[10];
   t_heading = current_angle;
+  HAL_UART_Receive_DMA (&huart3, Buffer, 5);
   /* Infinite loop */
   for(;;){
 	  // Loop until next command is received
 	  do{
-		  HAL_UART_Receive_IT(&huart3,(uint8_t *) Buffer,5);
 		  osDelay(100);
 	  }while(Buffer[0] == 'd');
 	  // Convert instruction value to int
@@ -732,7 +760,7 @@ void LeftMotor(void *argument)
 //	  dist = value;
 
 	  // For counter-clockwise turning
-	  if((Buffer[0]=='F' && Buffer[1]=='L')||(Buffer[0]=='B' && Buffer[1]=='R')){
+	  if((Buffer[0]=='F	' && Buffer[1]=='L')||(Buffer[0]=='B' && Buffer[1]=='R')){
 		  t_heading = t_heading - value;	// Set target heading
 		  target_angle = (double)t_heading;
 		  target_is_before = 1;
@@ -775,7 +803,7 @@ void LeftMotor(void *argument)
 	  //	  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
 
 		  // Loop until robot's heading passes target heading
-		  while(2*(0.5f - (double)target_is_before)*(target_angle - current_angle)>=0){
+		  while(2*(0.5f - (double)target_is_before)*(target_angle - current_angle)>0){
 			  // Blinking LED for checking program crashes
 			  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
 
@@ -783,6 +811,7 @@ void LeftMotor(void *argument)
 			  PID_Compute(&Turning_PID);
 
 			  // If steering left
+			  taskENTER_CRITICAL();
 			  if(Buffer[1] == 'L')
 			  {
 				  // Forward
@@ -831,19 +860,38 @@ void LeftMotor(void *argument)
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
 				  }
 			  }
+			  taskEXIT_CRITICAL();
 
-			  osDelayUntil(10);
+			  osDelayUntil(pdMS_TO_TICKS(10));
 		  }
 		  // Set both motor's speed to 0
+		  taskENTER_CRITICAL();
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,0);
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,0);
+		  taskEXIT_CRITICAL();
 	  }
 	  else{
-		  target_pulse = (double)value*39.4;
-		  current_pulse = 0;
+		  travel_dist = 0;
+		  encoder_position = 0;
+		  if(Buffer[0] == 'F'){
+			  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+			  target_is_before = 1;
+			  target_dist = (double)value;
+		  }
+		  else if(Buffer[0] == 'B'){
+			  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+			  target_is_before = 0;
+			  target_dist = -(double)value;
+		  }
 		  // Set straight distance PID controller (constants are Kp,Ki,Kd)
 		  // CONSTANTS NEED TO BE TUNED
-		  PID(&Straight_PID, &current_pulse, &PID_dist, &target_pulse, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+		  PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
 		  PID_SetMode(&Straight_PID, _PID_MODE_AUTOMATIC);
 		  PID_SetSampleTime(&Straight_PID, 10);
@@ -859,121 +907,52 @@ void LeftMotor(void *argument)
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)0);
 		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)0);
 
-		  cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
-		  tick = HAL_GetTick();
-
-		  while(current_pulse < target_pulse){
-			  sprintf(sbuf, "%7d ", (int)current_pulse);
-			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
-			  sprintf(sbuf, "%7d", (int)target_pulse);
-			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
-			  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+		  while((2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)>0)){
+//			  sprintf(sbuf, "%7d ", (int)current_pulse);
+//			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
+//			  sprintf(sbuf, "%7d", (int)target_pulse);
+//			  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
+//			  HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
 			  PID_Compute(&Straight_PID);
 			  PID_Compute(&StraightErr_PID);
 			  if(Buffer[0] == 'F')
 			  {
 				  // Left error
-				  if(PID_out < 0){
-					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-					  left_pwm = (double)pwmVal*(1+PID_out);
-					  right_pwm = (double)pwmVal*(1-PID_out);
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1+PID_out));
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal*(1-PID_out));
-				  }
-				  // Right error
-				  else{
-					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-
-					  left_pwm = (double)pwmVal*(1+PID_out);
-					  right_pwm = (double)pwmVal*(1-PID_out);
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1+PID_out));
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal*(1-PID_out));
-				  }
-
+				  left_pwm = (double)pwmVal*(1+PID_out);
+				  right_pwm = (double)pwmVal*(1-PID_out);
+//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1+PID_out));
+//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal*(1-PID_out));
 			  }
 			  else if(Buffer[0] == 'B')
 			  {
-				  // Right error
-				  if(PID_out < 0){
-					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-					  left_pwm = (double)pwmVal*(1+PID_out);
-					  right_pwm = (double)pwmVal*(1-PID_out);
-//					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1-PID_out));
-//					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal*(1+PID_out));
-				  }
-				  // Left error
-				  else{
-					  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-					  left_pwm = (double)pwmVal*(1+PID_out);
-					  right_pwm = (double)pwmVal*(1-PID_out);
-//					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1-PID_out));
-//					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal*(1+PID_out));
-				  }
+				  left_pwm = (double)pwmVal*(1-PID_out);
+				  right_pwm = (double)pwmVal*(1+PID_out);
+//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1-PID_out));
+//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal*(1+PID_out));
 			  }
 
-			  if(HAL_GetTick()-tick > 50L){
-					cnt2 = __HAL_TIM_GET_COUNTER(&htim2);
-					if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){
-						if(cnt2<cnt1)
-						{
-							pulse = cnt1 - cnt2;
-							//sprintf(hello, "total1:%5d\0", pulsetotal);
-						}
-						else
-						{
-							pulse = (65535 - cnt2) + cnt1;
-							//sprintf(hello, "total2:%5d\0", pulsetotal);
-						}
-					}
-					else{
-						if(cnt2>cnt1)
-						{
-							pulse = cnt2 - cnt1;
-							//sprintf(hello, "total3:%5d\0", pulsetotal);
-						}
-						else
-						{
-							pulse = (65535 - cnt1) + cnt2;
-							//sprintf(hello, "total4:%5d\0", pulsetotal);
-						}
-					}
-					pulsetotal = pulsetotal + (double)pulse;
-					current_pulse = pulsetotal;
-					//OLED_ShowString(10,40,hello);
-					cnt1 = __HAL_TIM_GET_COUNTER(&htim2);
-					tick = HAL_GetTick();
+			  taskENTER_CRITICAL();
+			  if(PID_dist < 0){
+				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio-PID_dist));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio-PID_dist));
 			  }
-//			  if(PID_dist < 0){
-//				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-//				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-//				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-//				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-//
-//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio-PID_dist));
-//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio-PID_dist));
-//			  }
-//			  else{
-//				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-//				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-//				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-//				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-//
-//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio+PID_dist));
-//				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio+PID_dist));
-//			  }
+			  else{
+				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio+PID_dist));
+				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio+PID_dist));
+			  }
+			  taskEXIT_CRITICAL();
+			  osDelayUntil(pdMS_TO_TICKS(10));
 		  }
 	  }
 
@@ -1223,10 +1202,33 @@ void GyroFunc(void *argument)
 {
   /* USER CODE BEGIN GyroFunc */
   uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);
-  osDelay(1000);
-  Gyro_calibrateHeading(&imu);
-  osDelay(1200);
+  double gyro_offset = 0, offset_local = 0;;
+  taskENTER_CRITICAL();
+  osDelay(2000);
+//
+//  int8_t i;
+//  for (i=0; i< 10; i++){
+//	IMU_GyroReadHeading(&imu);
+//	osDelayUntil(pdMS_TO_TICKS(10)); // wait for 10msec
+//  }
+//
+//  for (i=0; i< 64; i++){
+//	IMU_GyroReadHeading(&imu);
+//	offset_local = offset_local + (double)imu.gyro[2]/64.0;
+//	osDelayUntil(pdMS_TO_TICKS(10)); // wait for 10msec
+//  }
+//
+//  gyro_offset = offset_local;
+  Gyro_calibrateHeading(&imu, pdMS_TO_TICKS(21));
+  osDelay(2000);
+  taskEXIT_CRITICAL();
+  is_calibrated = 1;
   char sbuf[10];
+
+  int32_t encoder_prev = -1, encoder_cur = -1, dif = 0;
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+
+  uint8_t dispBuff[20];
   /* Infinite loop */
   for(;;)
   {
@@ -1236,19 +1238,54 @@ void GyroFunc(void *argument)
 	  taskEXIT_CRITICAL();
 
 	  // Update heading values
-	  current_gyro = current_gyro + imu.gyro[2] - 0.0027;		// Manual gyro offset
+	  current_gyro = current_gyro + imu.gyro[2];		// Manual gyro offset
 	  current_angle = current_gyro*1.0f;		// Increase if robot turns too much
+
+
+	  if(encoder_prev == -1 || encoder_cur == -1){
+		  encoder_cur = __HAL_TIM_GET_COUNTER(&htim2);
+		  encoder_prev = encoder_cur;
+	  }
+	  else{
+		  encoder_prev = encoder_cur;
+		  encoder_cur = __HAL_TIM_GET_COUNTER(&htim2);
+		  if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){
+			  if(encoder_cur <= encoder_prev){
+				  dif = encoder_prev - encoder_cur;
+			  }
+			  else{
+				  dif = encoder_prev + (65535 - encoder_cur);
+			  }
+		  }
+		  else{
+			  if(encoder_cur >= encoder_prev){
+				  dif = encoder_prev - encoder_cur;
+			  }
+			  else{
+				  dif = encoder_prev - (65535 + encoder_cur);
+			  }
+		  }
+		  encoder_position = encoder_position + dif;
+	  }
+	  travel_dist = (double)encoder_position * 0.01310615989;
+	  sprintf(dispBuff, "%5d", (int)current_angle*1000);
+	  OLED_ShowString(10,30,dispBuff);
+
+//  	  sprintf(sbuf, "%7d ", (int)(encoder_position));
+//  	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
+//  	  sprintf(sbuf, "%7d ", (int)(encoder_cur));
+//  	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
 
 //	  sprintf(sbuf, "%7d ", (int)(current_angle*100));
 //	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
-//	  sprintf(sbuf, "%7d ", (int)(PID_out*1000));
+//	  sprintf(sbuf, "%7d ", (int)((imu.gyro[2])*1000));
 //	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);
 ////	  sprintf(sbuf, "%9ul", (DWT->CYCCNT));
 ////	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 9, HAL_MAX_DELAY);
 //	  sprintf(sbuf, "\r\n");
 //	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 2, HAL_MAX_DELAY);
 
-      osDelayUntil(10);
+      osDelayUntil(pdMS_TO_TICKS(10));
   }
   /* USER CODE END GyroFunc */
 }
