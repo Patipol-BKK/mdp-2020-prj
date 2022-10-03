@@ -536,13 +536,13 @@ void Gyro_calibrateHeading(ICM20948 *dev, double ticks)  // calibrate the offset
 		osDelayUntil(ticks); // wait for 10msec
 	}
 
-    for (i=0; i< 1024; i++){
+    for (i=0; i< 2048; i++){
     	offset_local = offset_local + IMU_GyroReadHeading(dev);
 //		offset_local = offset_local + (double)dev->gyro[2]/64.0;
     	osDelayUntil(ticks); // wait for 10msec
     }
 
-    gyro_offset_f = offset_local>>10;
+    gyro_offset_f = offset_local>>11;
 }
 
 /*

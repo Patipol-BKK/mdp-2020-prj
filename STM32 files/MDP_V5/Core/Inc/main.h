@@ -77,6 +77,8 @@ void Error_Handler(void);
 #define LED3_GPIO_Port GPIOE
 #define Servo_Pin GPIO_PIN_14
 #define Servo_GPIO_Port GPIOE
+#define SW_Pin GPIO_PIN_8
+#define SW_GPIO_Port GPIOD
 #define PWMA_Pin GPIO_PIN_6
 #define PWMA_GPIO_Port GPIOC
 #define PWMB_Pin GPIO_PIN_7

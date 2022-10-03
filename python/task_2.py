@@ -25,8 +25,8 @@ instr_list = ['PS|FW''PS|DM120', 'PS|FL060', 'PS|FR060', 'PS|DM225', 'PS|FR023',
 init_pos = (0.5, 10.5, 90)
 
 
-obstacles = [(3, 15, 3), (12, 6, 3), (19, 6, 2)]
-instr_list = ['PR|start', 'PR|O0', 'PS|BW003', 'PS|FR090', 'PS|BW003', 'PS|FW080', 'PS|FL090', 'PS|BW003', 'PS|FR090', 'PS|BW003', 'PR|S0', 'PR|O0', 'PS|FW003', 'PS|BR090', 'PS|FW046', 'PS|BR090', 'PS|FW003', 'PR|S0', 'PR|O0', 'PS|BW003', 'PS|FR090', 'PS|BW003', 'PS|FW050', 'PS|FL090', 'PS|FW050', 'PR|S0']
+obstacles = [(1, 18, 3, 9), (18, 18, 1, 1), (10, 9, 3, 1)]
+instr_list = ['PR|start', 'PR|O9', 'PS|FW120', 'PS|BW003', 'PS|FR090', 'PS|BW003', 'PS|FW010', 'PS|BL180', 'PR|O1', 'PS|BW050', 'PS|BL090', 'PS|BW050', 'PS|FW003', 'PS|BR090', 'PS|FW003', 'PR|O1', 'PS|BW020', 'PS|BL090', 'PS|FW070']
 init_pos = (2.5, 0.5, 0)
 
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 

@@ -206,9 +206,9 @@ def get_stop_pos(obst):
     if obst[2] == UP:
         return (obst[0], obst[1] + 4, DOWN)
     elif obst[2] == DOWN:
-        return (obst[0], obst[1] - 3, UP)
+        return (obst[0], obst[1] - 4, UP)
     elif obst[2] == LEFT:
-        return (obst[0] - 3, obst[1], RIGHT)
+        return (obst[0] - 4, obst[1], RIGHT)
     elif obst[2] == RIGHT:
         return (obst[0] + 4, obst[1], LEFT)
 

@@ -1,8 +1,8 @@
-../Core/Src/main.c:656:6:StartDefaultTask	32	static
-../Core/Src/main.c:680:6:Display	32	static
-../Core/Src/main.c:703:6:LeftMotor	120	static
-../Core/Src/main.c:1199:6:GyroFunc	64	static
+../Core/Src/main.c:663:6:StartDefaultTask	32	static
+../Core/Src/main.c:687:6:Display	32	static
+../Core/Src/main.c:710:6:LeftMotor	128	static
+../Core/Src/main.c:1347:6:GyroFunc	80	static
 ../Core/Src/main.c:233:6:SystemClock_Config	88	static,ignoring_inline_asm
 ../Core/Src/main.c:130:5:main	120	static,ignoring_inline_asm
-../Core/Src/main.c:641:9:is_right	0	static
-../Core/Src/main.c:1284:6:Error_Handler	0	static,ignoring_inline_asm
+../Core/Src/main.c:648:9:is_right	0	static
+../Core/Src/main.c:1453:6:Error_Handler	0	static,ignoring_inline_asm

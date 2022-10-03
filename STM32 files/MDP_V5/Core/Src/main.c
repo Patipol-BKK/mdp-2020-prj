@@ -107,7 +107,7 @@ void GyroFunc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 3000, pwmVal_S = 2500*12/28, pwmVal_L = 2500;
+uint16_t pwmVal = 2000, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
 double min_pwm_ratio = 0.3, max_pwm_dif = 0.5;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
@@ -609,6 +609,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
@@ -634,6 +635,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SW_Pin */
+  GPIO_InitStruct.Pin = SW_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SW_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -731,6 +738,7 @@ void LeftMotor(void *argument)
   double PID_dist;
 
   double target_dist = 0;
+  double slip_x = 0, slip_y = 0;
 
   char sbuf[10];
   t_heading = current_angle;
@@ -772,11 +780,11 @@ void LeftMotor(void *argument)
 		  htim1.Instance ->CCR4 = 148.4;
 	  }
 	  // Wait for servo to turn
-	  osDelay(400);
+	  osDelay(550);
 	  // If currently running turning instruction
 	  if(Buffer[1] != 'W'){
 		  // Set PID Controller (constants are Kp,Ki,Kd)
-		  PID(&Turning_PID, &current_angle, &PID_out, &target_angle, 0.021, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+		  PID(&Turning_PID, &current_angle, &PID_out, &target_angle, 0.021, 0.1, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
 		  PID_SetMode(&Turning_PID, _PID_MODE_AUTOMATIC);
 		  PID_SetSampleTime(&Turning_PID, 10);
@@ -809,8 +817,14 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
 					  // Set motor speed to minimum power +/- PID output
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*min_pwm_ratio);
+					  }
+					  else{
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+					  }
 				  }
 				  // Backwards
 				  else{
@@ -820,8 +834,14 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
 					  // Set motor speed to minimum power +/- PID output
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_ratio));
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*min_pwm_ratio);
+					  }
+					  else{
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+					  }
 				  }
 			  }
 			  // If steering right
@@ -835,8 +855,14 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
 					  // Set motor speed to minimum power +/- PID output
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
+					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*min_pwm_ratio);
+					  }
+					  else{
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
+					  }
 				  }
 				  // Forwards
 				  else{
@@ -846,8 +872,14 @@ void LeftMotor(void *argument)
 					  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
 					  // Set motor speed to minimum power +/- PID output
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_ratio));
-					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
+					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*min_pwm_ratio);
+					  }
+					  else{
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
+					  }
 				  }
 			  }
 			  taskEXIT_CRITICAL();
@@ -872,7 +904,61 @@ void LeftMotor(void *argument)
 			  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 			  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 			  target_is_before = 1;
-			  target_dist = (double)value;
+			  target_dist = (double)value * 100.0/102.5;
+//			  if(value == 1){
+//				  target_dist = 0.79;
+//			  }
+//			  else if(value == 2){
+//				  target_dist = 1.51;
+//			  }
+//			  else if(value == 3){
+//				  target_dist = 2.21;
+//			  }
+//			  else if(value == 4){
+//				  target_dist = 3.02;
+//			  }
+//			  else if(value == 5){
+//				  target_dist = 3.82;
+//			  }
+//			  else if(value <= 10){
+//				  target_dist = 3.82 + (8.51-3.82)*((double)value - 5.0)/5.0;
+//			  }
+//			  else if(value <= 20){
+//				  target_dist = 8.51 + (18.15-8.51)*((double)value - 10.0)/10.0;
+//			  }
+//			  else if(value <= 30){
+//				  target_dist = 18.15 + (27.87-18.15)*((double)value - 20.0)/10.0;
+//			  }
+//			  else if(value <= 40){
+//				  target_dist = 27.87 + (37.48-27.87)*((double)value - 30.0)/10.0;
+//			  }
+//			  else if(value <= 50){
+//				  target_dist = 37.48 + (47.48-37.48)*((double)value - 40.0)/10.0;
+//			  }
+//			  else if(value <= 70){
+//				  target_dist = 47.48 + (67.26-47.48)*((double)value - 50.0)/20.0;
+//			  }
+//			  else if(value <= 100){
+//				  target_dist = 67.26 + (95.33-67.26)*((double)value - 100.0)/30.0;
+//			  }
+//			  else{
+//				  target_dist = (double)value - 5.0;
+//			  }
+//			  if(value <= 5){
+//				  target_dist = (double)value + 0.5;
+//			  }
+//			  else if(value <= 50){
+//				  target_dist = (double)value * 50.0/52.5;
+//			  }
+//			  else if(value < 70){
+//				  target_dist = (double)value * (double)value/((double)value + (2.5 + (3.0 - 2.5)*(((double)value) - 50)/(70 - 50)));
+//			  }
+//			  else if(value < 100){
+//				  target_dist = (double)value * (double)value/((double)value + (3.0 + (5.0 - 3.0)*(((double)value) - 70)/(100 - 70)));
+//			  }
+//			  else{
+//				  target_dist = (double)value * 100.0/105.0;
+//			  }
 		  }
 		  else if(Buffer[0] == 'B'){
 			  HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
@@ -880,7 +966,67 @@ void LeftMotor(void *argument)
 			  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 			  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 			  target_is_before = 0;
-			  target_dist = -(double)value;
+			  target_dist = -(double)value * 100.0/102.5;
+//			  if(value == 1){
+//				  target_dist = -0.79;
+//			  }
+//			  else if(value == 2){
+//				  target_dist = -1.51;
+//			  }
+//			  else if(value == 3){
+//				  target_dist = -2.21;
+//			  }
+//			  else if(value == 4){
+//				  target_dist = -3.02;
+//			  }
+//			  else if(value == 5){
+//				  target_dist = -3.82;
+//			  }
+//			  else if(value <= 10){
+//				  target_dist = -(3.82 + (8.51-3.82)*((double)value - 5.0)/5.0);
+//			  }
+//			  else if(value <= 20){
+//				  target_dist = -(8.51 + (18.15-8.51)*((double)value - 10.0)/10.0);
+//			  }
+//			  else if(value <= 30){
+//				  target_dist = -(18.15 + (27.87-18.15)*((double)value - 20.0)/10.0);
+//			  }
+//			  else if(value <= 40){
+//				  target_dist = -(27.87 + (37.48-27.87)*((double)value - 30.0)/10.0);
+//			  }
+//			  else if(value <= 50){
+//				  target_dist = -(37.48 + (47.48-37.48)*((double)value - 40.0)/10.0);
+//			  }
+//			  else if(value <= 70){
+//				  target_dist = -(47.48 + (67.26-47.48)*((double)value - 50.0)/20.0);
+//			  }
+//			  else if(value <= 100){
+//				  target_dist = -(67.26 + (95.33-67.26)*((double)value - 100.0)/30.0);
+//			  }
+//			  else{
+//				  target_dist = -((double)value - 5.0);
+//			  }
+//			  if(value <= 5){
+//				  target_dist = -(double)value - 0.5;
+//			  }
+//			  else if(value < 30){
+//				  target_dist = -(double)value * 30.0/31.5;
+//			  }
+//			  else if(value <= 40){
+//				  target_dist = -(double)value * (double)value/((double)value + 1.5);
+//			  }
+//			  else if(value < 50){
+//				  target_dist = -(double)value * (double)value/((double)value + (1.5 + (1.0 - 1.5)*(((double)value) - 40)/(50 - 40)));
+//			  }
+//			  else if(value < 70){
+//				  target_dist = -(double)value * (double)value/((double)value + (1.0 + (3.0 - 1.0)*(((double)value) - 50)/(70 - 50)));
+//			  }
+//			  else if(value < 100){
+//				  target_dist = -(double)value * (double)value/((double)value + (3.0 + (5.0 - 3.0)*(((double)value) - 70)/(100 - 70)));
+//			  }
+//			  else{
+//				  target_dist = -(double)value * 100.0/105.0;
+//			  }
 		  }
 		  // Set straight distance PID controller (constants are Kp,Ki,Kd)
 		  PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
@@ -916,6 +1062,7 @@ void LeftMotor(void *argument)
 			  if(Buffer[0] == 'F')
 			  {
 				  // Change pwm ratio for both motors to correct if heading deviates from straight line
+				  htim1.Instance ->CCR4 = 148.4 + (target_angle - current_angle)*3;
 				  left_pwm = (double)pwmVal*(1+PID_out);
 				  right_pwm = (double)pwmVal*(1-PID_out);
 //				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1+PID_out));
@@ -924,6 +1071,7 @@ void LeftMotor(void *argument)
 			  else if(Buffer[0] == 'B')
 			  {
 				  // Change pwm ratio for both motors to correct if heading deviates from straight line
+				  htim1.Instance ->CCR4 = 148.4 + (current_angle - target_angle)*3;
 				  left_pwm = (double)pwmVal*(1-PID_out);
 				  right_pwm = (double)pwmVal*(1+PID_out);
 //				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1-PID_out));
@@ -1200,9 +1348,13 @@ void GyroFunc(void *argument)
 {
   /* USER CODE BEGIN GyroFunc */
   uint8_t* status = IMU_Initialise(&imu, &hi2c1, &huart3);	// Initialize gyro
+  uint8_t dispBuff[20];
 
   // Calibrate gyroscope
   taskENTER_CRITICAL();
+  sprintf(dispBuff, "Calibr Gyro..");	// Prints current heading angle (x1000)
+  OLED_ShowString(10,30,dispBuff);
+//  OLED_Refresh_Gram();
   osDelay(2000);
   Gyro_calibrateHeading(&imu, pdMS_TO_TICKS(21));	// Sample gyro data every 21ms for 1024 samples and use as offset
   osDelay(2000);
@@ -1213,7 +1365,7 @@ void GyroFunc(void *argument)
   int32_t encoder_prev = -1, encoder_cur = -1, dif = 0;
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
-  uint8_t dispBuff[20];
+
   /* Infinite loop */
   for(;;)
   {
@@ -1254,9 +1406,26 @@ void GyroFunc(void *argument)
 		  encoder_position = encoder_position + dif;
 	  }
 	  travel_dist = (double)encoder_position * 0.01310615989;		// Edit constant to calibrate straight line distance
-	  sprintf(dispBuff, "%5d", (int)current_angle*1000);	// Prints current heading angle (x1000)
+	  sprintf(dispBuff, "%5d        ", (int)current_angle*1000);	// Prints current heading angle (x1000)
 	  OLED_ShowString(10,30,dispBuff);
 
+	  if(!HAL_GPIO_ReadPin(SW_GPIO_Port,SW_Pin)){
+		  encoder_position = 0;
+		  travel_dist = 0;
+		  encoder_prev = -1;
+		  encoder_cur = -1;
+		  dif = 0;
+		  current_gyro = 0;
+		  current_angle = 0;
+		  t_heading = 0;
+		  taskENTER_CRITICAL();
+		  sprintf(dispBuff, "Calibr Gyro..");	// Prints current heading angle (x1000)
+		  OLED_ShowString(10,30,dispBuff);
+		  osDelay(2000);
+		  Gyro_calibrateHeading(&imu, pdMS_TO_TICKS(21));	// Sample gyro data every 21ms for 1024 samples and use as offset
+		  osDelay(2000);
+		  taskEXIT_CRITICAL();
+	  }
 	  // For debugging
 //  	  sprintf(sbuf, "%7d ", (int)(encoder_position));
 //  	  HAL_UART_Transmit(&huart3, (uint8_t *)sbuf, 8, HAL_MAX_DELAY);

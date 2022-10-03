@@ -6,7 +6,7 @@ import math
 # from descartes import PolygonPatch
 
 TURNING_L = 2
-TURNING_R = TURNING_L + 0.3
+TURNING_R = TURNING_L + 0.2
 
 WIDTH = 2
 LENGTH = 2.3
@@ -169,7 +169,7 @@ def plot_obstacle(obstacles):
 		if obstacle[2] == 0:
 			plt.plot([obstacle[0],obstacle[0]+1],[obstacle[1]+1,obstacle[1]+1],color='red')
 		elif obstacle[2] == 1:
-			plt.plot([obstacle[0],obstacle[0]+1],[obstacle[1]-1,obstacle[1]-1],color='red')
+			plt.plot([obstacle[0],obstacle[0]+1],[obstacle[1],obstacle[1]],color='red')
 		elif obstacle[2] == 2:
 			plt.plot([obstacle[0],obstacle[0]],[obstacle[1]+1,obstacle[1]],color='red')
 		elif obstacle[2] == 3:
