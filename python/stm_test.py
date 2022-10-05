@@ -7,7 +7,7 @@ print(ser.open())
 # if not ser.open():
 #     print("Error opening port!")
 #     exit(0)f
-instr_list = ['PS|BR090']
+instr_list = ['PS|FW003']
 # f = open('instr.txt')
 # instr_list = eval(f.readline())
 

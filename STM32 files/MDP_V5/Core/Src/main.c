@@ -107,7 +107,7 @@ void GyroFunc(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t pwmVal = 2000, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
+uint16_t pwmVal = 2300, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
 double min_pwm_ratio = 0.3, max_pwm_dif = 0.5;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
@@ -904,7 +904,8 @@ void LeftMotor(void *argument)
 			  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 			  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 			  target_is_before = 1;
-			  target_dist = (double)value * 100.0/102.5;
+//			  target_dist = (double)value * 100.0/102.5;
+			  target_dist = (double)value * 1.01;
 //			  if(value == 1){
 //				  target_dist = 0.79;
 //			  }
@@ -966,7 +967,8 @@ void LeftMotor(void *argument)
 			  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 			  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 			  target_is_before = 0;
-			  target_dist = -(double)value * 100.0/102.5;
+//			  target_dist = -(double)value * 100.0/102.5;
+			  target_dist = -(double)value * 1.01;
 //			  if(value == 1){
 //				  target_dist = -0.79;
 //			  }
@@ -1029,7 +1031,7 @@ void LeftMotor(void *argument)
 //			  }
 		  }
 		  // Set straight distance PID controller (constants are Kp,Ki,Kd)
-		  PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.0, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+		  PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.07, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
 		  PID_SetMode(&Straight_PID, _PID_MODE_AUTOMATIC);
 		  PID_SetSampleTime(&Straight_PID, 10);
@@ -1085,8 +1087,15 @@ void LeftMotor(void *argument)
 				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio-PID_dist));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio-PID_dist));
+				  if(2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)<10){
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*min_pwm_ratio);
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*min_pwm_ratio);
+				  }
+				  else{
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio-PID_dist));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio-PID_dist));
+				  }
+
 			  }
 			  else{
 				  HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
@@ -1094,8 +1103,14 @@ void LeftMotor(void *argument)
 				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio+PID_dist));
-				  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio+PID_dist));
+				  if(2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)<10){
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*min_pwm_ratio);
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*min_pwm_ratio);
+				  }
+				  else{
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*(min_pwm_ratio+PID_dist));
+					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*(min_pwm_ratio+PID_dist));
+				  }
 			  }
 			  taskEXIT_CRITICAL();
 			  osDelayUntil(pdMS_TO_TICKS(10));
@@ -1405,7 +1420,8 @@ void GyroFunc(void *argument)
 		  }
 		  encoder_position = encoder_position + dif;
 	  }
-	  travel_dist = (double)encoder_position * 0.01310615989;		// Edit constant to calibrate straight line distance
+//	  travel_dist = (double)encoder_position * 0.01310615989;		// Edit constant to calibrate straight line distance
+	  travel_dist = (double)encoder_position * 0.01308996939;
 	  sprintf(dispBuff, "%5d        ", (int)current_angle*1000);	// Prints current heading angle (x1000)
 	  OLED_ShowString(10,30,dispBuff);
 
