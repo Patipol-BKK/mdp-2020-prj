@@ -399,11 +399,19 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                     instr.append("PS|BW003")
                 elif heading == 'BR':
                     instr.append("PS|FW003")
+                elif heading == 'FL':
+                    instr.append("PS|BW002")
+                elif heading == 'BL':
+                    instr.append("PS|FW002")
                 instr.append("PS|" + heading + str(dist).zfill(3))
                 if heading == 'FR':
                     instr.append("PS|BW003")
                 elif heading == 'BR':
                     instr.append("PS|FW003")
+                elif heading == 'FL':
+                    instr.append("PS|BW002")
+                elif heading == 'BL':
+                    instr.append("PS|FW002")
 
                 path_x.append(cur[0] + 0.5)
                 path_y.append(cur[1] + 0.5)
@@ -507,7 +515,7 @@ def simplify_instr(instr_list):
             # add prev and current dist
             new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
             if new_dist < 100:
-                new_dist = "0" + str(new_dist)
+                new_dist = str(new_dist).zfill(3)
             else:
                 new_dist = str(new_dist)
             # add new instr string
@@ -593,6 +601,7 @@ while not input_terminated:
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 
 # obstacles = [(3, 15, 3, 0), (12, 6, 3, 0), (19, 6, 2, 0)]
+# obstacles = [(6, 13, 0, 3), (1, 18, 1, 3), (18, 18, 2, 3), (16, 5, 2, 3), (13, 2, 3, 3)]
 
 init_pos = (2,0,0)
 
