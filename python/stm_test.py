@@ -2,7 +2,7 @@ import serial
 
 ser = serial.Serial()
 ser.baudrate = 115200
-ser.port = 'COM10'
+ser.port = 'COM3'
 print(ser.open())
 # if not ser.open():
 #     print("Error opening port!")

@@ -5,8 +5,8 @@ import math
 # import alphashape
 # from descartes import PolygonPatch
 
-TURNING_L = 2
-TURNING_R = TURNING_L + 0.2
+TURNING_L = 2.2
+TURNING_R = TURNING_L + 0.1
 
 WIDTH = 2
 LENGTH = 2.3

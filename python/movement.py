@@ -6,6 +6,7 @@ from matplotlib.patches import Rectangle, Arc
 from mpl_toolkits import mplot3d
 import numba
 from numba import jit
+from plotter import *
 import time
 import sys
 import itertools
@@ -399,11 +400,19 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                     instr.append("PS|BW003")
                 elif heading == 'BR':
                     instr.append("PS|FW003")
+                elif heading == 'FL':
+                    instr.append("PS|BW002")
+                elif heading == 'BL':
+                    instr.append("PS|FW002")
                 instr.append("PS|" + heading + str(dist).zfill(3))
                 if heading == 'FR':
                     instr.append("PS|BW003")
                 elif heading == 'BR':
                     instr.append("PS|FW003")
+                elif heading == 'FL':
+                    instr.append("PS|BW002")
+                elif heading == 'BL':
+                    instr.append("PS|FW002")
 
                 path_x.append(cur[0] + 0.5)
                 path_y.append(cur[1] + 0.5)
@@ -435,65 +444,65 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
 def get_path_instructions(cost_matrix, path_matrix, num_obst):
     generate_permutations(num_obst)
 
-# For plotting paths (with actual arcs), still WIP
-def plot_instr(plt, instr_list, start_pos, obstacles):
-    x = []
-    y = []
-    x.append(start_pos[0])
-    y.append(start_pos[1])
-    cur_pos = start_pos
-    for instr in instr_list:
-        instr_heading = instr[3:5]
-        instr_dist = int(instr[5:8])
-        if instr_heading == 'FW':
-            if cur_pos[2] == UP:
-                cur_pos = (cur_pos[0], cur_pos[1] + instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == DOWN:
-                cur_pos = (cur_pos[0], cur_pos[1] - instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == LEFT:
-                cur_pos = (cur_pos[0] - instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == RIGHT:
-                cur_pos = (cur_pos[0] + instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
+# # For plotting paths (with actual arcs), still WIP
+# def plot_instr(plt, instr_list, start_pos, obstacles):
+#     x = []
+#     y = []
+#     x.append(start_pos[0])
+#     y.append(start_pos[1])
+#     cur_pos = start_pos
+#     for instr in instr_list:
+#         instr_heading = instr[3:5]
+#         instr_dist = int(instr[5:8])
+#         if instr_heading == 'FW':
+#             if cur_pos[2] == UP:
+#                 cur_pos = (cur_pos[0], cur_pos[1] + instr_dist, cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
+#             elif cur_pos[2] == DOWN:
+#                 cur_pos = (cur_pos[0], cur_pos[1] - instr_dist, cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
+#             elif cur_pos[2] == LEFT:
+#                 cur_pos = (cur_pos[0] - instr_dist, cur_pos[1], cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
+#             elif cur_pos[2] == RIGHT:
+#                 cur_pos = (cur_pos[0] + instr_dist, cur_pos[1], cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
 
-        elif instr_heading == 'BW':
-            if cur_pos[2] == UP:
-                cur_pos = (cur_pos[0], cur_pos[1] - instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == DOWN:
-                cur_pos = (cur_pos[0], cur_pos[1] + instr_dist, cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == LEFT:
-                cur_pos = (cur_pos[0] + instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
-            elif cur_pos[2] == RIGHT:
-                cur_pos = (cur_pos[0] - instr_dist, cur_pos[1], cur_pos[2])
-                x.append(cur_pos[0])
-                y.append(cur_pos[1])
+#         elif instr_heading == 'BW':
+#             if cur_pos[2] == UP:
+#                 cur_pos = (cur_pos[0], cur_pos[1] - instr_dist, cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
+#             elif cur_pos[2] == DOWN:
+#                 cur_pos = (cur_pos[0], cur_pos[1] + instr_dist, cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
+#             elif cur_pos[2] == LEFT:
+#                 cur_pos = (cur_pos[0] + instr_dist, cur_pos[1], cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
+#             elif cur_pos[2] == RIGHT:
+#                 cur_pos = (cur_pos[0] - instr_dist, cur_pos[1], cur_pos[2])
+#                 x.append(cur_pos[0])
+#                 y.append(cur_pos[1])
 
-        elif instr_heading == 'FL':
-            if cur_pos[2] == UP:
-                turning_center = cur_pos[0] - TURNING_RAD, cur_pos[1]
-    ax = plt.gca()
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_xlim([0, 20])
-    ax.set_ylim([0, 20])
+#         elif instr_heading == 'FL':
+#             if cur_pos[2] == UP:
+#                 turning_center = cur_pos[0] - TURNING_RAD, cur_pos[1]
+#     ax = plt.gca()
+#     ax.set_aspect('equal', adjustable='box')
+#     ax.set_xlim([0, 20])
+#     ax.set_ylim([0, 20])
 
-    # plt.plot(x, y)
+#     # plt.plot(x, y)
 
-    for obstacle in obstacles:
-        ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
-    # plt.show()
+#     for obstacle in obstacles:
+#         ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1))
+#     # plt.show()
 
 # Simplify instructions list
 def simplify_instr(instr_list):
@@ -507,7 +516,7 @@ def simplify_instr(instr_list):
             # add prev and current dist
             new_dist = int(instr_list[index][5:]) + int(prev_instr[5:])
             if new_dist < 100:
-                new_dist = "0" + str(new_dist)
+                new_dist = str(new_dist).zfill(3)
             else:
                 new_dist = str(new_dist)
             # add new instr string
@@ -585,7 +594,7 @@ while not input_terminated:
                 orient_local = DOWN
             elif reply[4] == '3':
                 orient_local = LEFT
-            id_local = int(reply[5])
+            id_local = int(reply[5:])
 
             # Append the input obstacle
             obstacles.append((x_local, y_local, orient_local, id_local))
@@ -593,6 +602,7 @@ while not input_terminated:
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 
 # obstacles = [(3, 15, 3, 0), (12, 6, 3, 0), (19, 6, 2, 0)]
+# obstacles = [(6, 13, 0, 3), (1, 18, 1, 3), (18, 18, 2, 3), (16, 5, 2, 3), (13, 2, 3, 3)]
 
 init_pos = (2,0,0)
 
@@ -617,12 +627,36 @@ start = time.time()
 instr_list = simplify_instr(instr_list)
 print("Instruction list simplified - %.3fsec" % (time.time() - start))
 
+instr_list.append('PR|S0')
 print("Instructions: ", instr_list)
 
 # Loop through all the instructions to send to RPi
 for i in range(len(instr_list)):
     command = (instr_list[i]+',').encode('utf-8')
     s.send(command)
+
+def pos_to_cell(pos):
+	if round(pos[2]/90) == 0:
+		orient = UP
+	elif round(pos[2]/90) == 2:
+		orient = DOWN
+	elif round(pos[2]/90) == 3:
+		orient = LEFT
+	else:
+		orient = RIGHT
+
+	return round(pos[0]-10.5), round(pos[1]-10.5), orient
+
+collided_cells = get_collided_cells((2.5, 0.5, 0), instr_list, obstacles, 20, 20)
+
+plot_collided_cells(collided_cells, 20, 20)
+plot_instr((2.5, 0.5, 0), instr_list, obstacles)
+plot_obstacle(obstacles)
+ax = plt.gca()
+ax.set_xticks(np.arange(0,21,1))
+ax.set_yticks(np.arange(0,21,1))
+ax.grid(which='major', alpha=0.2)
+plt.show()
 
 # import serial
 
