@@ -524,8 +524,40 @@ def simplify_instr(instr_list):
         else:
             temp_instr_list.append(instr_list[index])
         index += 1
-    return temp_instr_list
+    
+    temp2_instr_list = [temp_instr_list[0]]
+    index = 1
+    instr_len = len(temp_instr_list)
 
+    while index < instr_len:
+        if temp2_instr_list[-1][4] == "W" and temp_instr_list[index][4] == "W":
+            prev = temp2_instr_list.pop()
+            if prev[3] == "F":
+                temp_len = int(prev[5:])
+            else:                           # if BW -> set distance to negative
+                temp_len = -int(prev[5:])
+
+            if temp_instr_list[index][3] == "F":
+                temp_len += int(temp_instr_list[index][5:])
+            else:                           # if BW -> minus distance from current distance
+                temp_len -= int(temp_instr_list[index][5:])
+            
+            if temp_len > 0:
+                temp2_instr_list.append("PS|FW" + str(temp_len).zfill(3))
+            elif temp_len < 0:
+                temp2_instr_list.append("PS|BW" + str(-temp_len).zfill(3))
+            else:   # dist = 0, no instr to add
+                if len(temp2_instr_list) == 0:  # no instr to add and temp2 is already empty
+                    if index+1 < instr_len:
+                        index += 1
+                        temp2_instr_list.append(temp_instr_list[index]) # add next instr to temp2 list if within index
+                    else:
+                        return temp2_instr_list # empty instr list and no new instr to add (unlikely)
+        else:
+            temp2_instr_list.append(temp_instr_list[index])
+        index += 1
+    return temp2_instr_list
+    
 def optimal_path(obstacles, cost_matrix, path_matrix):
     visited = set()
     target = len(obstacles) + 1 # visit all obstacles, and starting point
