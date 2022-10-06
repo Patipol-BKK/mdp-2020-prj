@@ -783,6 +783,7 @@ void LeftMotor(void *argument)
 	  osDelay(550);
 	  // If currently running turning instruction
 	  if(Buffer[1] != 'W'){
+		  PID_out = 0;
 		  // Set PID Controller (constants are Kp,Ki,Kd)
 		  PID(&Turning_PID, &current_angle, &PID_out, &target_angle, 0.021, 0.1, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
@@ -1030,6 +1031,8 @@ void LeftMotor(void *argument)
 //				  target_dist = -(double)value * 100.0/105.0;
 //			  }
 		  }
+		  PID_out = 0;
+		  PID_dist = 0;
 		  // Set straight distance PID controller (constants are Kp,Ki,Kd)
 		  PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.07, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 

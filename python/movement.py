@@ -578,7 +578,7 @@ while not input_terminated:
     if reply != '':
         print("Recieved Data : ", reply_raw, reply)
         # Check if the obstacle input has ended
-        if reply[0:5] == 'START':
+        if reply[0:5] == 'start':
             input_terminated = True
             init_pos = (2,0,0)
         elif reply[0:5] == 'reset':
