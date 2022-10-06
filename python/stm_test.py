@@ -2,12 +2,12 @@ import serial
 
 ser = serial.Serial()
 ser.baudrate = 115200
-ser.port = 'COM10'
+ser.port = 'COM3'
 print(ser.open())
 # if not ser.open():
 #     print("Error opening port!")
 #     exit(0)f
-instr_list = ['PS|BW003', 'PS|FR090', 'PS|BW003', 'PS|FW022', 'PS|BL090', 'PS|FW002']
+instr_list = ['PS|FW200']
 # f = open('instr.txt')
 # instr_list = eval(f.readline())
 

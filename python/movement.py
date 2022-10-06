@@ -420,7 +420,7 @@ def get_distance_graph(obstacles, coll_grid, init_pos):
                 prev = cur
                 cur = (prev_grid[int(cur[0])][int(cur[1])][int(cur[2])][0], prev_grid[int(cur[0])][int(cur[1])][int(cur[2])][1], prev_grid[int(cur[0])][int(cur[1])][int(cur[2])][2])
 
-            # instr.append("PR|S" + dest_obst)
+            instr.append("PR|S" + dest_obst)
 
 
             ax = plt.gca()
@@ -612,7 +612,20 @@ while not input_terminated:
         # Check if the obstacle input has ended
         if reply[0:5] == 'start':
             input_terminated = True
-            init_pos = (2,0,0)
+            init_pos = eval(reply[9:].replace(':', ','))
+            if init_pos[2] == 0:
+                new_heading = UP
+                init_pos = (init_pos[0], init_pos[1], new_heading)
+            elif init_pos[2] == 1:
+                new_heading = RIGHT
+                init_pos = (init_pos[0] - 1, init_pos[1] + 1, new_heading)
+            elif init_pos[2] == 2:
+                new_heading = DOWN
+                init_pos = (init_pos[0], init_pos[1] + 2, new_heading)
+            elif init_pos[2] == 3:
+                new_heading = LEFT
+                init_pos = (init_pos[0] + 1, init_pos[1] + 1, new_heading)
+            
         elif reply[0:5] == 'reset':
             obstacles = []
         else:
@@ -635,8 +648,6 @@ while not input_terminated:
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 
 # obstacles = [(3, 15, 3, 0), (12, 6, 3, 0), (19, 6, 2, 0)]
 # obstacles = [(6, 13, 0, 3), (1, 18, 1, 3), (18, 18, 2, 3), (16, 5, 2, 3), (13, 2, 3, 3)]
-
-init_pos = (2,0,0)
 
 print("Obstacles: ", obstacles)
 
@@ -667,6 +678,8 @@ for i in range(len(instr_list)):
     command = (instr_list[i]+',').encode('utf-8')
     s.send(command)
 
+s.close()
+
 def pos_to_cell(pos):
 	if round(pos[2]/90) == 0:
 		orient = UP
@@ -679,10 +692,19 @@ def pos_to_cell(pos):
 
 	return round(pos[0]-10.5), round(pos[1]-10.5), orient
 
-collided_cells = get_collided_cells((2.5, 0.5, 0), instr_list, obstacles, 20, 20)
+if init_pos[2] == UP:
+    head_print = 0
+elif init_pos[2] == RIGHT:
+    head_print = 90
+elif init_pos[2] == DOWN:
+    head_print = 180
+elif init_pos[2] == LEFT:
+    head_print = 270
+
+collided_cells = get_collided_cells((init_pos[0] + 0.5, init_pos[1] + 0.5, head_print), instr_list, obstacles, 20, 20)
 
 plot_collided_cells(collided_cells, 20, 20)
-plot_instr((2.5, 0.5, 0), instr_list, obstacles)
+plot_instr((init_pos[0] + 0.5, init_pos[1] + 0.5, head_print), instr_list, obstacles)
 plot_obstacle(obstacles)
 ax = plt.gca()
 ax.set_xticks(np.arange(0,21,1))
