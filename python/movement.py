@@ -47,19 +47,20 @@ def create_graph(coll_grid):
                         if not (coll_grid[idx_x-1][idx_y+3] or coll_grid[idx_x][idx_y+3] or coll_grid[idx_x+1][idx_y+3]):
                             edges[idx_x][idx_y][UP][idx_x][idx_y+1][UP] = 1
 
-                            # Forward turn right
-                            if idx_x < 16:
-                                if not (coll_grid[idx_x+2][idx_y+3] or coll_grid[idx_x+3][idx_y+3] or coll_grid[idx_x+4][idx_y+3] or \
-                                    coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+3][idx_y+2] or coll_grid[idx_x+4][idx_y+2] or \
-                                    coll_grid[idx_x+2][idx_y+1] or coll_grid[idx_x+3][idx_y+1] or coll_grid[idx_x+4][idx_y+1]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y+2][RIGHT] = 5
+                            if not (coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x][idx_y-1] or coll_grid[idx_x+1][idx_y-1]): # check back row before turning
+                                # Forward turn right
+                                if idx_x < 15:  # minus 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x+2][idx_y+3] or coll_grid[idx_x+3][idx_y+3] or coll_grid[idx_x+4][idx_y+3] or \
+                                        coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+3][idx_y+2] or coll_grid[idx_x+4][idx_y+2] or \
+                                        coll_grid[idx_x+2][idx_y+1] or coll_grid[idx_x+3][idx_y+1] or coll_grid[idx_x+4][idx_y+1]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y+2][RIGHT] = 5
 
-                            # Forward turn left
-                            if idx_x >= 4:
-                                 if not (coll_grid[idx_x-2][idx_y+3] or coll_grid[idx_x-3][idx_y+3] or coll_grid[idx_x-4][idx_y+3] or \
-                                    coll_grid[idx_x-2][idx_y+2] or coll_grid[idx_x-3][idx_y+2] or coll_grid[idx_x-4][idx_y+2] or \
-                                    coll_grid[idx_x-2][idx_y+1] or coll_grid[idx_x-3][idx_y+1] or coll_grid[idx_x-4][idx_y+1]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y+2][LEFT] = 5
+                                # Forward turn left
+                                if idx_x >= 5:  # add 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x-2][idx_y+3] or coll_grid[idx_x-3][idx_y+3] or coll_grid[idx_x-4][idx_y+3] or \
+                                        coll_grid[idx_x-2][idx_y+2] or coll_grid[idx_x-3][idx_y+2] or coll_grid[idx_x-4][idx_y+2] or \
+                                        coll_grid[idx_x-2][idx_y+1] or coll_grid[idx_x-3][idx_y+1] or coll_grid[idx_x-4][idx_y+1]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y+2][LEFT] = 5
                     # Backward
                     if idx_y >= 1:
                         if not (coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x][idx_y-1] or coll_grid[idx_x+1][idx_y-1]):
@@ -68,14 +69,15 @@ def create_graph(coll_grid):
                     if idx_y >= 3:
                         if not (coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x][idx_y-1] or coll_grid[idx_x+1][idx_y-1] or \
                             coll_grid[idx_x-1][idx_y-2] or coll_grid[idx_x][idx_y-2] or coll_grid[idx_x+1][idx_y-2] or \
-                            coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x][idx_y-3] or coll_grid[idx_x+1][idx_y-3]):
+                            coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x][idx_y-3] or coll_grid[idx_x+1][idx_y-3] or \
+                            coll_grid[idx_x-1][idx_y+1] or coll_grid[idx_x][idx_y+1] or coll_grid[idx_x+1][idx_y+1]):   # check the front row before backward turn
                             # Backward turn right
-                            if idx_x < 18:
+                            if idx_x < 17:  # minus 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x+2][idx_y-1] or coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+2][idx_y-3]):
                                     edges[idx_x][idx_y][UP][idx_x+2][idx_y-2][LEFT] = 5
 
                             # Backward turn left
-                            if idx_x >= 2:
+                            if idx_x >= 3:  # add 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x-2][idx_y-1] or coll_grid[idx_x-2][idx_y-2] or coll_grid[idx_x-2][idx_y-3]):
                                     edges[idx_x][idx_y][UP][idx_x-2][idx_y-2][RIGHT] = 5
 
@@ -86,19 +88,20 @@ def create_graph(coll_grid):
                         if not (coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x][idx_y-3] or coll_grid[idx_x+1][idx_y-3]):
                             edges[idx_x][idx_y][DOWN][idx_x][idx_y-1][DOWN] = 1
 
-                            # Forward turn right
-                            if idx_x >= 4:
-                                 if not (coll_grid[idx_x-2][idx_y-3] or coll_grid[idx_x-3][idx_y-3] or coll_grid[idx_x-4][idx_y-3] or \
-                                    coll_grid[idx_x-2][idx_y-2] or coll_grid[idx_x-3][idx_y-2] or coll_grid[idx_x-4][idx_y-2] or \
-                                    coll_grid[idx_x-2][idx_y-1] or coll_grid[idx_x-3][idx_y-1] or coll_grid[idx_x-4][idx_y-1]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y-2][LEFT] = 5
+                            if not (coll_grid[idx_x-1][idx_y+1] or coll_grid[idx_x][idx_y+1] or coll_grid[idx_x+1][idx_y+1]): # check back row before forward turning
+                                # Forward turn right
+                                if idx_x >= 5:  # add 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x-2][idx_y-3] or coll_grid[idx_x-3][idx_y-3] or coll_grid[idx_x-4][idx_y-3] or \
+                                        coll_grid[idx_x-2][idx_y-2] or coll_grid[idx_x-3][idx_y-2] or coll_grid[idx_x-4][idx_y-2] or \
+                                        coll_grid[idx_x-2][idx_y-1] or coll_grid[idx_x-3][idx_y-1] or coll_grid[idx_x-4][idx_y-1]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y-2][LEFT] = 5
 
-                            # Forward turn left
-                            if idx_x < 16:
-                                if not (coll_grid[idx_x+2][idx_y-3] or coll_grid[idx_x+3][idx_y-3] or coll_grid[idx_x+4][idx_y-3] or \
-                                    coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+3][idx_y-2] or coll_grid[idx_x+4][idx_y-2] or \
-                                    coll_grid[idx_x+2][idx_y-1] or coll_grid[idx_x+3][idx_y-1] or coll_grid[idx_x+4][idx_y-1]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y-2][RIGHT] = 5
+                                # Forward turn left
+                                if idx_x < 15:  # minus 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x+2][idx_y-3] or coll_grid[idx_x+3][idx_y-3] or coll_grid[idx_x+4][idx_y-3] or \
+                                        coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+3][idx_y-2] or coll_grid[idx_x+4][idx_y-2] or \
+                                        coll_grid[idx_x+2][idx_y-1] or coll_grid[idx_x+3][idx_y-1] or coll_grid[idx_x+4][idx_y-1]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y-2][RIGHT] = 5
                             
                     # Backward
                     if idx_y < 19:
@@ -108,14 +111,15 @@ def create_graph(coll_grid):
                     if idx_y < 17:
                         if not (coll_grid[idx_x-1][idx_y+1] or coll_grid[idx_x][idx_y+1] or coll_grid[idx_x+1][idx_y+1] or \
                             coll_grid[idx_x-1][idx_y+2] or coll_grid[idx_x][idx_y+2] or coll_grid[idx_x+1][idx_y+2] or \
-                            coll_grid[idx_x-1][idx_y+3] or coll_grid[idx_x][idx_y+3] or coll_grid[idx_x+1][idx_y+3]):
+                            coll_grid[idx_x-1][idx_y+3] or coll_grid[idx_x][idx_y+3] or coll_grid[idx_x+1][idx_y+3] or \
+                            coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x][idx_y-1] or coll_grid[idx_x+1][idx_y-1]):   # check front row before forward turning
                             # Backward turn right
-                            if idx_x >= 2:
+                            if idx_x >= 3:  # add 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x-2][idx_y+1] or coll_grid[idx_x-2][idx_y+2] or coll_grid[idx_x-2][idx_y+3]):
                                     edges[idx_x][idx_y][DOWN][idx_x-2][idx_y+2][RIGHT] = 5
 
                             # Backward turn left
-                            if idx_x < 18:
+                            if idx_x < 17:  # minus 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x+2][idx_y+1] or coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+2][idx_y+3]):
                                     edges[idx_x][idx_y][DOWN][idx_x+2][idx_y+2][LEFT] = 5
 
@@ -126,19 +130,20 @@ def create_graph(coll_grid):
                         if not (coll_grid[idx_x-3][idx_y-1] or coll_grid[idx_x-3][idx_y] or coll_grid[idx_x-3][idx_y+1]):
                             edges[idx_x][idx_y][LEFT][idx_x-1][idx_y][LEFT] = 1
 
-                            # Forward turn right
-                            if idx_y < 16:
-                                if not (coll_grid[idx_x-3][idx_y+2] or coll_grid[idx_x-3][idx_y+3] or coll_grid[idx_x-3][idx_y+4] or \
-                                    coll_grid[idx_x-2][idx_y+2] or coll_grid[idx_x-2][idx_y+3] or coll_grid[idx_x-2][idx_y+4] or \
-                                    coll_grid[idx_x-1][idx_y+2] or coll_grid[idx_x-1][idx_y+3] or coll_grid[idx_x-1][idx_y+4]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y+2][UP] = 5
+                            if not (coll_grid[idx_x+1][idx_y-1] or coll_grid[idx_x+1][idx_y] or coll_grid[idx_x+1][idx_y+1]):   # check back row before forward turning
+                                # Forward turn right
+                                if idx_y < 15:  # minus 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x-3][idx_y+2] or coll_grid[idx_x-3][idx_y+3] or coll_grid[idx_x-3][idx_y+4] or \
+                                        coll_grid[idx_x-2][idx_y+2] or coll_grid[idx_x-2][idx_y+3] or coll_grid[idx_x-2][idx_y+4] or \
+                                        coll_grid[idx_x-1][idx_y+2] or coll_grid[idx_x-1][idx_y+3] or coll_grid[idx_x-1][idx_y+4]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y+2][UP] = 5
 
-                            # Forward turn left
-                            if idx_y >= 4:
-                                 if not (coll_grid[idx_x-3][idx_y-2] or coll_grid[idx_x-3][idx_y-3] or coll_grid[idx_x-3][idx_y-4] or \
-                                    coll_grid[idx_x-2][idx_y-2] or coll_grid[idx_x-2][idx_y-3] or coll_grid[idx_x-2][idx_y-4] or \
-                                    coll_grid[idx_x-1][idx_y-2] or coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x-1][idx_y-4]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y-2][DOWN] = 5
+                                # Forward turn left
+                                if idx_y >= 5:  # add 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x-3][idx_y-2] or coll_grid[idx_x-3][idx_y-3] or coll_grid[idx_x-3][idx_y-4] or \
+                                        coll_grid[idx_x-2][idx_y-2] or coll_grid[idx_x-2][idx_y-3] or coll_grid[idx_x-2][idx_y-4] or \
+                                        coll_grid[idx_x-1][idx_y-2] or coll_grid[idx_x-1][idx_y-3] or coll_grid[idx_x-1][idx_y-4]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x-2][idx_y-2][DOWN] = 5
                             
                     # Backward
                     if idx_x < 19:
@@ -148,14 +153,15 @@ def create_graph(coll_grid):
                     if idx_x < 17:
                         if not (coll_grid[idx_x+1][idx_y-1] or coll_grid[idx_x+1][idx_y] or coll_grid[idx_x+1][idx_y+1] or \
                             coll_grid[idx_x+2][idx_y-1] or coll_grid[idx_x+2][idx_y] or coll_grid[idx_x+2][idx_y+1] or \
-                            coll_grid[idx_x+3][idx_y-1] or coll_grid[idx_x+3][idx_y] or coll_grid[idx_x+3][idx_y+1]):
+                            coll_grid[idx_x+3][idx_y-1] or coll_grid[idx_x+3][idx_y] or coll_grid[idx_x+3][idx_y+1] or \
+                            coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x-1][idx_y] or coll_grid[idx_x-1][idx_y+1]):   # check front row before forward turning
                             # Backward turn right
-                            if idx_y < 18:
+                            if idx_y < 17:  # minus 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x+1][idx_y+2] or coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+3][idx_y+2]):
                                     edges[idx_x][idx_y][LEFT][idx_x+2][idx_y+2][DOWN] = 5
 
                             # Backward turn left
-                            if idx_y >= 2:
+                            if idx_y >= 3:  # add 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x+1][idx_y-2] or coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+3][idx_y-2]):
                                     edges[idx_x][idx_y][LEFT][idx_x+2][idx_y-2][UP] = 5
 
@@ -166,19 +172,20 @@ def create_graph(coll_grid):
                         if not (coll_grid[idx_x+3][idx_y-1] or coll_grid[idx_x+3][idx_y] or coll_grid[idx_x+3][idx_y+1]):
                             edges[idx_x][idx_y][RIGHT][idx_x+1][idx_y][RIGHT] = 1
 
-                            # Forward turn right
-                            if idx_y >= 4:
-                                 if not (coll_grid[idx_x+3][idx_y-2] or coll_grid[idx_x+3][idx_y-3] or coll_grid[idx_x+3][idx_y-4] or \
-                                    coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+2][idx_y-3] or coll_grid[idx_x+2][idx_y-4] or \
-                                    coll_grid[idx_x+1][idx_y-2] or coll_grid[idx_x+1][idx_y-3] or coll_grid[idx_x+1][idx_y-4]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y-2][DOWN] = 5
+                            if not (coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x-1][idx_y] or coll_grid[idx_x-1][idx_y+1]):   # check back row before forward turning
+                                # Forward turn right
+                                if idx_y >= 5:  # add 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x+3][idx_y-2] or coll_grid[idx_x+3][idx_y-3] or coll_grid[idx_x+3][idx_y-4] or \
+                                        coll_grid[idx_x+2][idx_y-2] or coll_grid[idx_x+2][idx_y-3] or coll_grid[idx_x+2][idx_y-4] or \
+                                        coll_grid[idx_x+1][idx_y-2] or coll_grid[idx_x+1][idx_y-3] or coll_grid[idx_x+1][idx_y-4]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y-2][DOWN] = 5
 
-                            # Forward turn left
-                            if idx_y < 16:
-                                if not (coll_grid[idx_x+3][idx_y+2] or coll_grid[idx_x+3][idx_y+3] or coll_grid[idx_x+3][idx_y+4] or \
-                                    coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+2][idx_y+3] or coll_grid[idx_x+2][idx_y+4] or \
-                                    coll_grid[idx_x+1][idx_y+2] or coll_grid[idx_x+1][idx_y+3] or coll_grid[idx_x+1][idx_y+4]):
-                                        edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y+2][UP] = 5
+                                # Forward turn left
+                                if idx_y < 15:  # add 1, to accomodate checking of col behind robot after turning
+                                    if not (coll_grid[idx_x+3][idx_y+2] or coll_grid[idx_x+3][idx_y+3] or coll_grid[idx_x+3][idx_y+4] or \
+                                        coll_grid[idx_x+2][idx_y+2] or coll_grid[idx_x+2][idx_y+3] or coll_grid[idx_x+2][idx_y+4] or \
+                                        coll_grid[idx_x+1][idx_y+2] or coll_grid[idx_x+1][idx_y+3] or coll_grid[idx_x+1][idx_y+4]):
+                                            edges[idx_x][idx_y][idx_theta][idx_x+2][idx_y+2][UP] = 5
 
                     # Backward
                     if idx_x >= 1:
@@ -188,15 +195,16 @@ def create_graph(coll_grid):
                     if idx_x >= 3:
                         if not (coll_grid[idx_x-1][idx_y-1] or coll_grid[idx_x-1][idx_y] or coll_grid[idx_x-1][idx_y+1] or \
                             coll_grid[idx_x-2][idx_y-1] or coll_grid[idx_x-2][idx_y] or coll_grid[idx_x-2][idx_y+1] or \
-                            coll_grid[idx_x-3][idx_y-1] or coll_grid[idx_x-3][idx_y] or coll_grid[idx_x-3][idx_y+1]):
+                            coll_grid[idx_x-3][idx_y-1] or coll_grid[idx_x-3][idx_y] or coll_grid[idx_x-3][idx_y+1] or \
+                            coll_grid[idx_x+1][idx_y-1] or coll_grid[idx_x+1][idx_y] or coll_grid[idx_x+1][idx_y+1]):   # check front row before forward turning
 
                             # Backward turn right
-                            if idx_y >= 2:
+                            if idx_y >= 3:  # add 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x-1][idx_y-2] or coll_grid[idx_x-2][idx_y-2] or coll_grid[idx_x-3][idx_y-2]):
                                     edges[idx_x][idx_y][RIGHT][idx_x-2][idx_y-2][UP] = 5
                             # Backward turn left
 
-                            if idx_y < 18:
+                            if idx_y < 17:  # minus 1, to accomodate checking of col behind robot after turning
                                 if not (coll_grid[idx_x-1][idx_y+2] or coll_grid[idx_x-2][idx_y+2] or coll_grid[idx_x-3][idx_y+2]):
                                     edges[idx_x][idx_y][RIGHT][idx_x-2][idx_y+2][DOWN] = 5
     return edges;
