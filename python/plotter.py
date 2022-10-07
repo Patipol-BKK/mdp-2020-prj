@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 import math
+from utils import *
 # import alphashape
 # from descartes import PolygonPatch
 
@@ -152,17 +153,12 @@ def plot_instr(init_pos, instr_list, obstacles):
 		# plt.
 	plt.plot(x, y)
 
-	ax = plt.gca()
-	ax.set_aspect('equal', adjustable='box')
-	ax.set_xlim([0, 20])
-	ax.set_ylim([0, 20])
-
 	return cur_pos
 
 
 	
 
-def plot_obstacle(obstacles):
+def plot_obstacles(obstacles):
 	ax = plt.gca()
 	for obstacle in obstacles:
 		ax.add_patch(Rectangle((obstacle[0], obstacle[1]), 1, 1,color='gray'))
@@ -220,12 +216,20 @@ def get_collided_cells(init_pos, instr_list, obstacles, x_lim, y_lim):
 	print("Final coor: ", cur_pos)
 	return collided_cells
 
+def update_collided_cells(pos, collided_cells, x_lim, y_lim):
+	for idx_x in range(x_lim):
+		for idx_y in range(y_lim):
+			if is_collided(idx_x, idx_y, pos):
+				collided_cells[idx_x][idx_y] = 1
+	return collided_cells
+
 def plot_collided_cells(collided_cells, x_lim, y_lim):
 	ax = plt.gca()
 	for idx_x in range(x_lim):
 		for idx_y in range(y_lim):
 			if collided_cells[idx_x][idx_y]:
 				ax.add_patch(Rectangle((idx_x, idx_y), 1, 1,color='blue',alpha=0.06))
+
 
 # obstacles = [(4, 10, 3, 4), (12, 3, 3, 6), (3, 10, 0, 5), (5, 3, 3, 3), (3, 17, 3, 2)] 
 # # instr_list = ['PR|start', 'PR|O3', 'PS|FW030', 'PS|BW003', 'PS|FR090', 'PS|BW003', 'PS|FW020', 'PS|FL090', 'PS|BW020', 'PS|FW003', 'PS|BR090', 'PS|FW003', 'PR|S3', 'PR|O6', 'PS|FW023', 'PS|BR090', 'PS|FW003', 'PS|BL090', 'PS|BW010', 'PS|BL090', 'PS|FW003', 'PS|BR090', 'PS|FW003', 'PR|S6', 'PR|O4', 'PS|BW003', 'PS|FR090', 'PS|BW003', 'PS|FW030', 'PS|FL090', 'PS|FW040', 'PR|S4', 'PR|O2', 'PS|BW013', 'PS|FR090', 'PS|BW003', 'PS|FW030', 'PS|FL090', 'PS|BW020', 'PR|S2', 'PR|O5', 'PS|FL180', 'PS|BW030', 'PS|BL090', 'PR|S5']
