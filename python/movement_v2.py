@@ -557,7 +557,7 @@ def simplify_instr(instr_list):
             temp2_instr_list.append(temp_instr_list[index])
         index += 1
     return temp2_instr_list
-
+    
 def optimal_path(obstacles, cost_matrix, path_matrix):
     visited = set()
     target = len(obstacles) + 1 # visit all obstacles, and starting point
