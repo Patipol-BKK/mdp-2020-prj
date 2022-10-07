@@ -1,4 +1,0 @@
-Configured
-1. OLED
-2. left Wheel
-3. Rpi communication (untested)
