@@ -108,7 +108,7 @@ void GyroFunc(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint16_t pwmVal = 2300, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
-double min_pwm_ratio = 0.3, max_pwm_dif = 0.5;
+double min_pwm_ratio = 0.2, max_pwm_dif = 0.5;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
 int32_t t_heading = 0;

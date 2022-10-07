@@ -108,7 +108,7 @@ void GyroFunc(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint16_t pwmVal = 2300, pwmVal_S = 2000*12/28, pwmVal_L = 2000;
-double min_pwm_ratio = 0.3, max_pwm_dif = 0.5;
+double min_pwm_ratio = 0.2, min_pwm_turn = 0.3, max_pwm_dif = 0.5;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
 int32_t t_heading = 0;
@@ -789,7 +789,7 @@ void LeftMotor(void *argument)
 
 		  PID_SetMode(&Turning_PID, _PID_MODE_AUTOMATIC);
 		  PID_SetSampleTime(&Turning_PID, 10);
-		  PID_SetOutputLimits(&Turning_PID, -1.0f+min_pwm_ratio, 1.0f-min_pwm_ratio);
+		  PID_SetOutputLimits(&Turning_PID, -1.0f+min_pwm_turn, 1.0f-min_pwm_turn);
 
 		  // For debugging
 	  //	  sprintf(sbuf, "%d ", (int)target_angle);
@@ -819,12 +819,12 @@ void LeftMotor(void *argument)
 
 					  // Set motor speed to minimum power +/- PID output
 					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*min_pwm_ratio);
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*min_pwm_turn);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*min_pwm_turn);
 					  }
 					  else{
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(-PID_out+min_pwm_turn));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(-PID_out+min_pwm_turn));
 					  }
 				  }
 				  // Backwards
@@ -836,12 +836,12 @@ void LeftMotor(void *argument)
 
 					  // Set motor speed to minimum power +/- PID output
 					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*min_pwm_ratio);
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*min_pwm_turn);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*min_pwm_turn);
 					  }
 					  else{
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_ratio));
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_S*(PID_out+min_pwm_turn));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_L*(PID_out+min_pwm_turn));
 					  }
 				  }
 			  }
@@ -857,12 +857,12 @@ void LeftMotor(void *argument)
 
 					  // Set motor speed to minimum power +/- PID output
 					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*min_pwm_ratio);
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*min_pwm_turn);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*min_pwm_turn);
 					  }
 					  else{
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_ratio));
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(-PID_out+min_pwm_turn));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(-PID_out+min_pwm_turn));
 					  }
 				  }
 				  // Forwards
@@ -874,12 +874,12 @@ void LeftMotor(void *argument)
 
 					  // Set motor speed to minimum power +/- PID output
 					  if(2*(0.5f - (double)target_is_before)*(target_angle - current_angle) < 10){
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*min_pwm_ratio);
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*min_pwm_ratio);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*min_pwm_turn);
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*min_pwm_turn);
 					  }
 					  else{
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_ratio));
-						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_ratio));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal_L*(PID_out+min_pwm_turn));
+						  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,(double)pwmVal_S*(PID_out+min_pwm_turn));
 					  }
 				  }
 			  }
@@ -1090,7 +1090,7 @@ void LeftMotor(void *argument)
 				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
 				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
-				  if(2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)<10){
+				  if(2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)<8){
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*min_pwm_ratio);
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*min_pwm_ratio);
 				  }
@@ -1106,7 +1106,7 @@ void LeftMotor(void *argument)
 				  HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 				  HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-				  if(2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)<10){
+				  if(2*((double)target_is_before - 0.5f)*(target_dist - travel_dist)<8){
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1, left_pwm*min_pwm_ratio);
 					  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2, right_pwm*min_pwm_ratio);
 				  }
