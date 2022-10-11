@@ -1,0 +1,10 @@
+IMU.c:175:19:IMU_WriteOneByte	32	static
+IMU.c:181:19:IMU_ReadOneByte	24	static
+IMU.c:26:10:IMU_Initialise	56	static
+IMU.c:187:19:IMU_TempRead	24	static
+IMU.c:199:19:IMU_AccelRead	32	static
+IMU.c:246:19:Gyro_calibrate	40	static
+IMU.c:283:19:IMU_GyroRead	24	static
+IMU.c:353:9:IMU_GyroReadHeading	40	static
+IMU.c:344:6:IMU_GyroResetTick	0	static
+IMU.c:529:6:Gyro_calibrateHeading	24	static
