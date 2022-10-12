@@ -123,8 +123,8 @@ void sonic_sensor(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 double right_ratio = 0.4862681447, left_ratio = 0.46911519198;
-uint16_t pwmVal = 2300, pwmVal_Turn = 2000;
-double min_pwm_ratio = 0.2, min_pwm_turn = 0.3, max_pwm_dif = 0.5;
+uint16_t pwmVal = 10000, pwmVal_Turn = 3000;
+double min_pwm_ratio = 0.1, min_pwm_turn = 0.2, max_pwm_dif = 0.5;
 uint8_t Buffer[5];
 int32_t heading_rbt = 0;
 int32_t t_heading = 0;
@@ -142,6 +142,7 @@ uint32_t IC_Val1 = 0;
 uint32_t IC_Val2 = 0;
 uint32_t Difference = 0;
 uint32_t Distance = 0;
+uint32_t prevDistance[4] = {0};
 uint8_t Is_First_Captured = 0;  // is the first value captured ?
 
 void delay(uint16_t time)
@@ -176,8 +177,20 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             {
                 Difference = (0xffff - IC_Val1) + IC_Val2;
             }
+            prevDistance[2] = prevDistance[1];
+            prevDistance[1] = prevDistance[0];
+            prevDistance[0] = Difference * .034 / 2;
 
-            Distance = Difference * .034 / 2;
+            // median filter
+            if(prevDistance[1] <= prevDistance[0] && prevDistance[1] >= prevDistance[2])Distance = prevDistance[1];
+			else if(prevDistance[1] <= prevDistance[2] && prevDistance[1] >= prevDistance[0])Distance = prevDistance[1];
+
+			else if(prevDistance[0] <= prevDistance[2] && prevDistance[0] >= prevDistance[1])Distance = prevDistance[0];
+			else if(prevDistance[0] <= prevDistance[2] && prevDistance[0] >= prevDistance[1])Distance = prevDistance[0];
+
+			else if(prevDistance[2] <= prevDistance[0] && prevDistance[2] >= prevDistance[1])Distance = prevDistance[2];
+			else Distance = prevDistance[2];
+
             Is_First_Captured = 0; // set it back to false
 
             // set polarity to rising edge
@@ -839,6 +852,7 @@ void Display(void *argument)
 
 /* USER CODE BEGIN Header_LeftMotor */
 double PID_out;
+uint16_t savedDistances[10] = {0};
 /**
 * @brief Function implementing the Motor_L thread.
 * @param argument: Not used
@@ -858,7 +872,7 @@ void LeftMotor(void *argument)
 
 
 
-    int16_t value;
+    int16_t value, idx;
 
 
     while(!is_calibrated)
@@ -871,7 +885,7 @@ void LeftMotor(void *argument)
 
 
     double target_angle = 90;
-    uint8_t target_is_before = 0;
+    uint8_t target_is_before = 0, distance_measure_mode = 0;
 
     double left_pwm = 0, right_pwm = 0;
     double PID_dist;
@@ -891,9 +905,37 @@ void LeftMotor(void *argument)
             osDelay(100);
         }
         while(Buffer[0] == 'd');
+        distance_measure_mode = 0;
         // Convert instruction value to int
         value = (Buffer[2] - '0') * 100 + (Buffer[3] - '0') * 10 + Buffer[4] - '0';
-        //    dist = value;
+
+        if(Buffer[0] == 'D' && Buffer[1] == 'M')
+        {
+        	taskENTER_CRITICAL();
+        	idx = Buffer[2] - '0';
+        	value = (Buffer[3] - '0') * 10 + Buffer[4] - '0';
+        	savedDistances[idx] = Distance - 20;
+        	value = savedDistances[idx];
+        	Buffer[0] = 'F';
+        	Buffer[1] = 'W';
+        	Buffer[2] = (uint8_t)(value/100)%10 + '0';
+        	Buffer[3] = (uint8_t)(value/10)%10 + '0';
+        	Buffer[4] = (uint8_t)value%10 + '0';
+        	taskEXIT_CRITICAL();
+
+        }
+        else if(Buffer[0] == 'D' && Buffer[1] == 'R')
+        {
+        	taskENTER_CRITICAL();
+        	idx = Buffer[2] - '0';
+        	Buffer[0] = 'F';
+        	Buffer[1] = 'W';
+        	value = savedDistances[idx];
+        	Buffer[2] = (uint8_t)(value/100)%10 + '0';
+			Buffer[3] = (uint8_t)(value/10)%10 + '0';
+			Buffer[4] = (uint8_t)value%10 + '0';
+			taskEXIT_CRITICAL();
+        }
 
         // For counter-clockwise turning
         if((Buffer[0] == 'F' && Buffer[1] == 'L') || (Buffer[0] == 'B' && Buffer[1] == 'R'))
@@ -969,7 +1011,7 @@ void LeftMotor(void *argument)
                         HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
                         // Set motor speed to minimum power +/- PID output
-                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 10)
+                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 20)
                         {
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, (double)pwmVal_Turn * left_ratio * min_pwm_turn);
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, (double)pwmVal_Turn * min_pwm_turn);
@@ -989,7 +1031,7 @@ void LeftMotor(void *argument)
                         HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
                         // Set motor speed to minimum power +/- PID output
-                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 10)
+                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 20)
                         {
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, (double)pwmVal_Turn * left_ratio * min_pwm_turn);
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, (double)pwmVal_Turn * min_pwm_turn);
@@ -1013,7 +1055,7 @@ void LeftMotor(void *argument)
                         HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
                         // Set motor speed to minimum power +/- PID output
-                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 10)
+                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 20)
                         {
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, (double)pwmVal_Turn * min_pwm_turn);
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, (double)pwmVal_Turn * right_ratio * min_pwm_turn);
@@ -1033,7 +1075,7 @@ void LeftMotor(void *argument)
                         HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
                         // Set motor speed to minimum power +/- PID output
-                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 10)
+                        if(2 * (0.5f - (double)target_is_before) * (target_angle - current_angle) < 20)
                         {
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, (double)pwmVal_Turn * min_pwm_turn);
                             __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, (double)pwmVal_Turn * right_ratio * min_pwm_turn);
@@ -1199,7 +1241,7 @@ void LeftMotor(void *argument)
             PID_out = 0;
             PID_dist = 0;
             // Set straight distance PID controller (constants are Kp,Ki,Kd)
-            PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.02, 0.07, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+            PID(&Straight_PID, &travel_dist, &PID_dist, &target_dist, 0.011, 0.07, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
 
             PID_SetMode(&Straight_PID, _PID_MODE_AUTOMATIC);
             PID_SetSampleTime(&Straight_PID, 10);
@@ -1233,7 +1275,7 @@ void LeftMotor(void *argument)
                 if(Buffer[0] == 'F')
                 {
                     // Change pwm ratio for both motors to correct if heading deviates from straight line
-                    htim1.Instance ->CCR4 = 148.4 + (target_angle - current_angle) * 3;
+                    htim1.Instance ->CCR4 = 148.4 + (target_angle - current_angle) * 2;
                     left_pwm = (double)pwmVal * (1 + PID_out);
                     right_pwm = (double)pwmVal * (1 - PID_out);
                     //          __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1+PID_out));
@@ -1242,7 +1284,7 @@ void LeftMotor(void *argument)
                 else if(Buffer[0] == 'B')
                 {
                     // Change pwm ratio for both motors to correct if heading deviates from straight line
-                    htim1.Instance ->CCR4 = 148.4 + (current_angle - target_angle) * 3;
+                    htim1.Instance ->CCR4 = 148.4 + (current_angle - target_angle) * 2;
                     left_pwm = (double)pwmVal * (1 - PID_out);
                     right_pwm = (double)pwmVal * (1 + PID_out);
                     //          __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,(double)pwmVal*(1-PID_out));
@@ -1257,7 +1299,7 @@ void LeftMotor(void *argument)
                     HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
                     HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
 
-                    if(2 * ((double)target_is_before - 0.5f) * (target_dist - travel_dist) < 8)
+                    if(2 * ((double)target_is_before - 0.5f) * (target_dist - travel_dist) < 23)
                     {
                         __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, left_pwm * min_pwm_ratio);
                         __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, right_pwm * min_pwm_ratio);
@@ -1276,7 +1318,7 @@ void LeftMotor(void *argument)
                     HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
                     HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-                    if(2 * ((double)target_is_before - 0.5f) * (target_dist - travel_dist) < 8)
+                    if(2 * ((double)target_is_before - 0.5f) * (target_dist - travel_dist) < 23)
                     {
                         __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, left_pwm * min_pwm_ratio);
                         __HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, right_pwm * min_pwm_ratio);
